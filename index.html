@@ -706,7 +706,10 @@ function renderHoje(){
   const budget=S.config.horasPorDia*60;
   const pend=pendingTarefas();
   let used=0,hoje=[];
-  for(const t of pend){if(used+t.duracaoMin<=budget+15){hoje.push(t);used+=t.duracaoMin;if(used>=budget)break}}
+  for(const t of pend){
+    if(used+t.duracaoMin<=budget+15){hoje.push(t);used+=t.duracaoMin;if(used>=budget)break}
+    else{if(hoje.length===0){hoje.push(t);used+=t.duracaoMin}break}
+  }
   const pctBar=Math.min(100,Math.round(used/budget*100));
   document.getElementById('hojeBar').innerHTML=`
     <div class="tbw"><div class="tbf" style="width:${pctBar}%;background:linear-gradient(90deg,#4ade80,#22d3ee)"></div></div>
@@ -739,7 +742,11 @@ function calcMeta(totalMins){
   }
   discData.forEach(d=>{
     let bud=d.alloc;d.selected=[];
-    for(const t of d.tasks){if(bud<=0)break;if(t.duracaoMin<=bud+10){d.selected.push(t);bud-=t.duracaoMin}}
+    for(const t of d.tasks){
+      if(bud<=0)break;
+      if(t.duracaoMin<=bud+10){d.selected.push(t);bud-=t.duracaoMin}
+      else{if(d.selected.length===0){d.selected.push(t);bud-=t.duracaoMin}break}
+    }
   });
   return discData;
 }
@@ -886,29 +893,57 @@ function renderPrevisao(){
 
 function parseXlsxQuestoes(arrayBuffer){
   const wb = XLSX.read(arrayBuffer, {type:'array'});
+  if(!wb.SheetNames.length) throw new Error('Arquivo sem planilhas');
   const sheet = wb.Sheets[wb.SheetNames[0]];
-  const rows = XLSX.utils.sheet_to_json(sheet, {defval:null, raw:true});
+  const data = XLSX.utils.sheet_to_json(sheet, {header:1, defval:null, raw:true, blankrows:false});
+  if(data.length < 2) throw new Error('Planilha vazia ou sem dados');
+  function norm(s){return String(s||'').trim().toLowerCase().normalize('NFC').replace(/\s+/g,' ')}
+  const headers = (data[0]||[]).map(norm);
+  function colIdx(...names){
+    for(const n of names){
+      const target = norm(n);
+      const idx = headers.findIndex(h => h === target);
+      if(idx !== -1) return idx;
+    }
+    return -1;
+  }
+  const iHier = colIdx('hierarquia');
+  const iNome = colIdx('índice','indice');
+  const iQR   = colIdx('questões resolvidas','questoes resolvidas');
+  const iAcN  = colIdx('quantidade de acertos');
+  const iErN  = colIdx('quantidade de erros');
+  const iAcP  = colIdx('acertos (%)','acertos(%)');
+  const iErP  = colIdx('erros (%)','erros(%)');
+  const iPeso = colIdx('peso');
+  if(iHier === -1 || iNome === -1){
+    throw new Error('Colunas obrigatórias não encontradas. Cabeçalhos esperados: Hierarquia, índice, Questões Resolvidas, Acertos (%), Quantidade de acertos, Erros (%), Quantidade de erros, Peso.');
+  }
   const disciplinas = [];
   let currentDisc = null;
-  for(const row of rows){
-    const hier = row['Hierarquia'];
-    const nome = row['índice'] || row['indice'] || row['Índice'];
-    if(!nome) continue;
-    const qr = Number(row['Questões Resolvidas']||0);
-    const ac = Number(row['Quantidade de acertos']||0);
-    const er = Number(row['Quantidade de erros']||0);
-    const pa = Number(row['Acertos (%)']||0);
-    const pe = Number(row['Erros (%)']||0);
-    const peso = Number(row['Peso']||1);
-    const item = {nome, qResolvidas:qr, acertos:ac, erros:er, pctAcerto:pa, pctErro:pe, peso};
-    if(hier==null||hier===''||hier===undefined){
-      currentDisc = {...item, topicos:[]};
+  for(let r = 1; r < data.length; r++){
+    const row = data[r] || [];
+    const hier = row[iHier];
+    const nome = row[iNome];
+    if(nome == null || String(nome).trim() === '') continue;
+    const item = {
+      nome: String(nome).trim(),
+      qResolvidas: Number(row[iQR])||0,
+      acertos: Number(row[iAcN])||0,
+      erros: Number(row[iErN])||0,
+      pctAcerto: Number(row[iAcP])||0,
+      pctErro: Number(row[iErP])||0,
+      peso: iPeso!==-1?(Number(row[iPeso])||1):1,
+    };
+    const hierStr = hier == null ? '' : String(hier).trim();
+    if(hierStr === ''){
+      currentDisc = {...item, topicos: []};
       disciplinas.push(currentDisc);
-    }else{
-      if(!currentDisc)continue;
-      currentDisc.topicos.push({...item, codigo: String(hier)});
+    } else {
+      if(!currentDisc) continue;
+      currentDisc.topicos.push({...item, codigo: hierStr});
     }
   }
+  if(!disciplinas.length) throw new Error('Nenhuma disciplina encontrada. Verifique se a primeira coluna (Hierarquia) está vazia nas linhas de matéria.');
   const total = disciplinas.reduce((s,d)=>s+d.qResolvidas,0);
   const totalA = disciplinas.reduce((s,d)=>s+d.acertos,0);
   const totalE = disciplinas.reduce((s,d)=>s+d.erros,0);
