@@ -895,8 +895,23 @@ function parseXlsxQuestoes(arrayBuffer){
   const wb = XLSX.read(arrayBuffer, {type:'array'});
   if(!wb.SheetNames.length) throw new Error('Arquivo sem planilhas');
   const sheet = wb.Sheets[wb.SheetNames[0]];
+  // TecConcursos exports sometimes declare wrong !ref. Recompute from actual cells.
+  let maxR=0, maxC=0;
+  for(const k in sheet){
+    if(k.startsWith('!')) continue;
+    const m = k.match(/^([A-Z]+)(\d+)$/);
+    if(m){
+      const c = XLSX.utils.decode_col(m[1]);
+      const r = parseInt(m[2]) - 1;
+      if(r > maxR) maxR = r;
+      if(c > maxC) maxC = c;
+    }
+  }
+  if(maxR > 0){
+    sheet['!ref'] = XLSX.utils.encode_range({s:{r:0,c:0}, e:{r:maxR, c:maxC}});
+  }
   const data = XLSX.utils.sheet_to_json(sheet, {header:1, defval:null, raw:true, blankrows:false});
-  if(data.length < 2) throw new Error('Planilha vazia ou sem dados');
+  if(data.length < 2) throw new Error('Planilha sem linhas de dados (apenas cabeçalho).');
   function norm(s){return String(s||'').trim().toLowerCase().normalize('NFC').replace(/\s+/g,' ')}
   const headers = (data[0]||[]).map(norm);
   function colIdx(...names){
