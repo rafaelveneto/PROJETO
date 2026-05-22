@@ -1,0 +1,1404 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>APROVADO · Tracker</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;700;800&family=JetBrains+Mono:wght@400;600&family=DM+Sans:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+:root{
+  --bg:#0c0f14;--s1:#13181f;--s2:#1a2030;--s3:#212b3a;--bd:#2a3547;
+  --amb:#f5a623;--amb-d:#c4841b;--amb-g:rgba(245,166,35,.12);--amb-b:rgba(245,166,35,.3);
+  --tx:#dce5ef;--mu:#6b7a90;--gr:#4ade80;--re:#f87171;--bl:#60a5fa;--pu:#c084fc;--cy:#22d3ee;--yl:#fbbf24;
+  --r:10px;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--tx);font-family:'DM Sans',sans-serif;min-height:100vh}
+.ty-TEORIA{color:#60a5fa;background:rgba(96,165,250,.1);border-color:rgba(96,165,250,.3)}
+.ty-LEI_SECA{color:#4ade80;background:rgba(74,222,128,.1);border-color:rgba(74,222,128,.3)}
+.ty-TEORIA_LEI{color:#c084fc;background:rgba(192,132,252,.1);border-color:rgba(192,132,252,.3)}
+.ty-QUESTOES{color:#f5a623;background:rgba(245,166,35,.1);border-color:rgba(245,166,35,.3)}
+.ty-REVISAO{color:#22d3ee;background:rgba(34,211,238,.1);border-color:rgba(34,211,238,.3)}
+.ty-MAPEAMENTO{color:#f87171;background:rgba(248,113,113,.1);border-color:rgba(248,113,113,.3)}
+header{background:var(--s1);border-bottom:1px solid var(--bd);padding:0 20px;display:flex;align-items:center;gap:12px;height:54px;position:sticky;top:0;z-index:100}
+.logo{font-family:'Syne',sans-serif;font-weight:800;font-size:15px;letter-spacing:.06em;color:var(--amb);white-space:nowrap}
+.logo span{color:var(--tx);font-weight:400}
+.sync-ind{display:flex;align-items:center;gap:6px;background:var(--s2);border:1px solid var(--bd);padding:5px 10px;border-radius:6px;cursor:pointer;transition:border-color .2s;font-size:11px;color:var(--mu);white-space:nowrap}
+.sync-ind:hover{border-color:var(--amb)}
+.sync-dot{width:7px;height:7px;border-radius:50%;background:var(--mu)}
+.sync-dot.s-synced{background:var(--gr)}
+.sync-dot.s-syncing{background:var(--yl);animation:pulse 1s infinite}
+.sync-dot.s-error{background:var(--re)}
+.sync-dot.s-unconfigured{background:var(--mu)}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+.hprog{flex:1;max-width:240px;min-width:120px}
+.pr{display:flex;justify-content:space-between;margin-bottom:3px}
+.pl{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--mu)}
+.pw{background:var(--s3);border-radius:99px;height:6px;overflow:hidden}
+.pf{background:linear-gradient(90deg,var(--amb-d),var(--amb));height:100%;border-radius:99px;transition:width .6s}
+nav{display:flex;gap:2px;margin-left:auto}
+nav button{background:none;border:none;color:var(--mu);font-family:'Syne',sans-serif;font-size:12px;font-weight:700;padding:6px 11px;border-radius:6px;cursor:pointer;transition:all .2s;letter-spacing:.02em}
+nav button:hover{color:var(--tx);background:var(--s2)}
+nav button.active{color:var(--amb);background:var(--amb-g);border:1px solid var(--amb-b)}
+.gear-btn{background:none;border:none;color:var(--mu);font-size:18px;cursor:pointer;padding:4px 8px;border-radius:6px;transition:all .2s;margin-left:4px}
+.gear-btn:hover{color:var(--amb);background:var(--s2)}
+main{max-width:900px;margin:0 auto;padding:26px 18px}
+.tab{display:none}.tab.active{display:block}
+.sg{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:18px}
+.sc{background:var(--s1);border:1px solid var(--bd);border-radius:var(--r);padding:16px;text-align:center}
+.sv{font-family:'JetBrains Mono',monospace;font-size:24px;font-weight:600;color:var(--amb);display:block;line-height:1}
+.sl{font-size:10px;color:var(--mu);margin-top:5px;text-transform:uppercase;letter-spacing:.05em}
+.tg{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:18px}
+.tc{background:var(--s1);border:1px solid var(--bd);border-radius:8px;padding:10px 12px;display:flex;align-items:center;gap:8px}
+.td{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.tn{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--mu)}
+.tv{font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:600;color:var(--tx)}
+.card{background:var(--s1);border:1px solid var(--bd);border-radius:var(--r);padding:20px;margin-bottom:18px}
+.ct{font-family:'Syne',sans-serif;font-size:10px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--mu);margin-bottom:14px}
+.tbw{background:var(--s3);border-radius:99px;height:8px;overflow:hidden;margin-bottom:5px}
+.tbf{height:100%;border-radius:99px;transition:width .5s}
+.tr{display:flex;justify-content:space-between;font-size:11px;color:var(--mu);margin-bottom:16px}
+.tr span{font-family:'JetBrains Mono',monospace}
+.ti{display:flex;align-items:flex-start;gap:11px;padding:13px 15px;border-radius:8px;margin-bottom:7px;background:var(--s2);border:1px solid var(--bd);transition:border-color .2s;cursor:pointer}
+.ti:hover{border-color:var(--amb-b)}
+.ti.done{opacity:.4}.ti.done .tt{text-decoration:line-through}
+.chk{width:21px;height:21px;min-width:21px;border-radius:5px;border:2px solid var(--bd);background:none;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .2s;margin-top:2px;font-size:12px;color:transparent}
+.chk:hover{border-color:var(--amb);background:var(--amb-g)}
+.chk.on{background:var(--gr);border-color:var(--gr);color:#0c0f14;font-weight:700}
+.tb{flex:1;min-width:0}
+.tr2{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:4px}
+.tag{font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:600;padding:2px 7px;border-radius:4px;border:1px solid transparent}
+.tag-disc{color:var(--amb);background:var(--amb-g);border-color:var(--amb-b)}
+.tag-ty{font-size:9px;font-weight:700;padding:2px 6px;border-radius:4px;border:1px solid}
+.tag-ok{color:var(--gr);background:rgba(74,222,128,.08);border-color:rgba(74,222,128,.2);font-size:9px;padding:2px 6px;border-radius:4px;font-family:'JetBrains Mono',monospace;font-weight:600}
+.tag-ctx{color:var(--mu);background:var(--s3);border:1px solid var(--bd);font-size:9px;padding:2px 6px;border-radius:4px;font-family:'JetBrains Mono',monospace}
+.tag-done{color:var(--gr);background:rgba(74,222,128,.1);border:1px solid rgba(74,222,128,.25);font-size:9px;padding:2px 6px;border-radius:4px;font-family:'JetBrains Mono',monospace;font-weight:700}
+.tt{font-size:14px;font-weight:500;color:var(--tx);margin-bottom:3px;line-height:1.4}
+.tm{font-size:11px;color:var(--mu);display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.mono{font-family:'JetBrains Mono',monospace}
+.eh{font-size:10px;color:var(--amb);margin-left:auto}
+.det{margin-top:11px;padding-top:12px;border-top:1px solid var(--bd);display:none}
+.det.open{display:block}
+.db{margin-bottom:12px}
+.dl{font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--mu);margin-bottom:6px}
+.cmd{background:var(--s3);border-left:3px solid var(--bl);padding:9px 12px;font-size:12px;line-height:1.6;color:var(--tx)}
+.lt{width:100%;border-collapse:collapse;font-size:11px}
+.lt th{background:rgba(74,222,128,.08);color:#4ade80;font-weight:700;text-align:left;padding:5px 9px;border-bottom:1px solid rgba(74,222,128,.2);font-size:9px;letter-spacing:.05em;text-transform:uppercase}
+.lt td{padding:6px 9px;border-bottom:1px solid var(--bd);color:var(--tx);vertical-align:top;line-height:1.5}
+.lt td:first-child{font-family:'JetBrains Mono',monospace;font-size:10px;color:#4ade80;white-space:nowrap}
+.lt tr:last-child td{border-bottom:none}
+.bz{font-size:12px;line-height:1.5;color:var(--tx);background:rgba(245,166,35,.06);border-left:3px solid var(--amb);padding:6px 11px;margin-bottom:4px}
+.fl{font-size:12px;line-height:1.5;color:var(--tx);background:rgba(248,113,113,.07);border-left:3px solid var(--re);padding:6px 10px;margin-bottom:4px}
+.kwl{display:flex;flex-wrap:wrap;gap:5px}
+.kw{font-size:10px;background:var(--s3);border:1px solid var(--bd);padding:2px 9px;border-radius:99px;color:var(--tx)}
+.dg{margin-bottom:26px}
+.dh{display:flex;align-items:center;gap:9px;flex-wrap:wrap;margin-bottom:9px;padding-bottom:11px;border-bottom:1px solid var(--bd)}
+.db2{font-family:'Syne',sans-serif;font-size:12px;font-weight:800;color:var(--amb);background:var(--amb-g);border:1px solid var(--amb-b);padding:3px 11px;border-radius:6px;white-space:nowrap}
+.dn{font-family:'Syne',sans-serif;font-size:15px;font-weight:700}
+.dpct{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--mu)}
+.mp{background:var(--s3);border-radius:99px;height:3px;margin-bottom:12px;overflow:hidden}
+.mpf{height:100%;border-radius:99px;transition:width .5s}
+.btnx{background:rgba(248,113,113,.08);color:var(--re);border:1px solid rgba(248,113,113,.25);font-family:'Syne',sans-serif;font-size:10px;font-weight:700;padding:3px 9px;border-radius:5px;cursor:pointer}
+.btnx:hover{background:rgba(248,113,113,.2)}
+.ab{margin-bottom:14px}
+.ah{display:flex;align-items:center;gap:8px;margin-bottom:8px;cursor:pointer}
+.ac{font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:600;color:var(--mu);background:var(--s3);border:1px solid var(--bd);padding:2px 8px;border-radius:4px}
+.at2{font-size:13px;font-weight:500;color:var(--tx)}
+.atg{font-size:10px;color:var(--mu)}
+.meta-ctrl{background:var(--s1);border:1px solid var(--bd);border-radius:var(--r);padding:18px;margin-bottom:18px;display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+.meta-label{font-size:13px;color:var(--mu)}
+.hrs-input{background:var(--s2);border:1px solid var(--bd);border-radius:6px;color:var(--tx);font-family:'JetBrains Mono',monospace;font-size:18px;font-weight:600;width:70px;padding:8px 10px;outline:none;text-align:center}
+.hrs-input:focus{border-color:var(--amb)}
+.disc-alloc{background:var(--s1);border:1px solid var(--bd);border-radius:var(--r);margin-bottom:14px}
+.da-head{padding:14px 18px;display:flex;align-items:center;gap:12px;cursor:pointer;border-radius:var(--r);transition:background .2s}
+.da-head:hover{background:var(--s2)}
+.da-name{font-family:'Syne',sans-serif;font-size:14px;font-weight:700;flex:1}
+.da-hrs{font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--mu)}
+.da-bar{height:3px;background:var(--s3);overflow:hidden}
+.da-tasks{padding:0 18px 14px;display:none}
+.da-tasks.open{display:block}
+.pv-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px}
+.pv-card{background:var(--s1);border:1px solid var(--bd);border-radius:var(--r);padding:16px;text-align:center}
+.pv-val{font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:600;display:block;margin-bottom:2px}
+.pv-lbl{font-size:10px;color:var(--mu);text-transform:uppercase;letter-spacing:.05em}
+.what-if{background:var(--s1);border:1px solid var(--bd);border-radius:var(--r);padding:18px;margin-bottom:18px}
+.wi-row{display:flex;align-items:center;gap:12px;padding:7px 0;border-bottom:1px solid var(--bd)}
+.wi-row:last-child{border-bottom:none}
+.wi-h{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--mu);width:60px}
+.wi-bar{flex:1;height:5px;background:var(--s3);border-radius:99px;overflow:hidden}
+.wi-fill{height:100%;background:var(--gr);border-radius:99px}
+.wi-date{font-size:11px;color:var(--tx);text-align:right;width:130px}
+.wi-active .wi-h,.wi-active .wi-date{color:var(--amb)}
+.wi-active .wi-fill{background:var(--amb)}
+.fg{display:flex;flex-direction:column;gap:5px}.fg.full{grid-column:1/-1}
+.fg2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+label{font-size:10px;font-weight:700;color:var(--mu);text-transform:uppercase;letter-spacing:.07em}
+input,textarea,select{background:var(--s2);border:1px solid var(--bd);border-radius:7px;color:var(--tx);font-family:'DM Sans',sans-serif;font-size:13px;padding:8px 11px;outline:none;transition:border-color .2s;width:100%}
+input:focus,textarea:focus,select:focus{border-color:var(--amb)}
+textarea{resize:vertical;min-height:65px}
+select option{background:var(--s2)}
+.tblock{background:var(--s2);border:1px solid var(--bd);border-radius:8px;padding:14px;margin-bottom:10px}
+.tbh{display:flex;justify-content:space-between;align-items:center;margin-bottom:11px}
+.tbn{font-family:'Syne',sans-serif;font-weight:800;font-size:12px;color:var(--amb)}
+.imp-tabs{display:flex;gap:6px;margin-bottom:18px;flex-wrap:wrap}
+.imp-tab{background:var(--s2);border:1px solid var(--bd);border-radius:7px;color:var(--mu);font-family:'Syne',sans-serif;font-size:12px;font-weight:700;padding:8px 14px;cursor:pointer;transition:all .2s}
+.imp-tab.active{color:var(--amb);background:var(--amb-g);border-color:var(--amb-b)}
+.imp-panel{display:none}.imp-panel.active{display:block}
+.parse-preview{background:var(--s2);border:1px solid var(--bd);border-radius:8px;padding:14px;margin-top:14px}
+.btn{font-family:'Syne',sans-serif;font-weight:700;font-size:12px;padding:9px 18px;border-radius:7px;border:none;cursor:pointer;transition:all .2s;display:inline-flex;align-items:center;gap:6px}
+.btn-p{background:var(--amb);color:#0c0f14}.btn-p:hover{background:var(--amb-d)}
+.btn-g{background:var(--s2);color:var(--tx);border:1px solid var(--bd)}.btn-g:hover{border-color:var(--amb);color:var(--amb)}
+.btn-s{background:var(--s2);color:var(--mu);border:1px solid var(--bd);font-size:11px;padding:6px 12px}
+.sh{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:10px}
+.stit{font-family:'Syne',sans-serif;font-size:19px;font-weight:800}
+.empty{text-align:center;padding:50px 20px;color:var(--mu);font-size:13px}
+.greet{font-family:'Syne',sans-serif;font-size:21px;font-weight:800;margin-bottom:3px}
+.gsub{font-size:12px;color:var(--mu);margin-bottom:22px}
+.disc-color-dot{width:10px;height:10px;border-radius:50%;display:inline-block;flex-shrink:0}
+.q-disc-card{background:var(--s1);border:1px solid var(--bd);border-radius:var(--r);margin-bottom:10px;overflow:hidden}
+.q-disc-head{padding:14px 18px;display:grid;grid-template-columns:18px 1fr 80px 90px 60px;align-items:center;gap:12px;cursor:pointer}
+.q-disc-head:hover{background:var(--s2)}
+.q-disc-name{font-size:13px;font-weight:500;color:var(--tx)}
+.q-acc{font-family:'JetBrains Mono',monospace;font-size:14px;font-weight:600;text-align:right}
+.q-acc.high{color:var(--gr)}.q-acc.mid{color:var(--yl)}.q-acc.low{color:var(--re)}
+.q-bar{height:4px;background:var(--s3);border-radius:99px;overflow:hidden;width:80px}
+.q-bar-fill{height:100%;border-radius:99px}
+.q-vol{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--mu);text-align:right}
+.q-topics{padding:0 18px 14px;display:none;border-top:1px solid var(--bd)}
+.q-topics.open{display:block}
+.q-topic{display:grid;grid-template-columns:1fr 70px 70px 50px;gap:10px;align-items:center;padding:6px 0;border-bottom:1px solid var(--bd);font-size:12px}
+.q-topic:last-child{border-bottom:none}
+.q-topic-name{color:var(--tx);line-height:1.4}
+.q-weak-list{display:flex;flex-direction:column;gap:8px}
+.q-weak-item{display:grid;grid-template-columns:1fr 70px 90px;gap:10px;align-items:center;padding:8px 12px;background:rgba(248,113,113,.06);border-left:3px solid var(--re);font-size:12px}
+.q-weak-name{color:var(--tx);font-size:12px;line-height:1.4}
+.q-weak-disc{font-size:10px;color:var(--mu);margin-top:2px}
+.q-filter-bar{background:var(--s1);border:1px solid var(--bd);border-radius:var(--r);padding:14px 18px;margin-bottom:14px;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.modal-bg{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.75);display:none;align-items:flex-start;justify-content:center;z-index:1000;padding:60px 20px;overflow:auto}
+.modal-bg.open{display:flex}
+.modal{background:var(--s1);border:1px solid var(--bd);border-radius:12px;padding:24px;width:560px;max-width:100%}
+.modal h3{font-family:'Syne',sans-serif;font-size:18px;font-weight:800;margin-bottom:8px}
+.modal .sub{font-size:12px;color:var(--mu);margin-bottom:18px;line-height:1.5}
+.modal-close{float:right;background:none;border:none;color:var(--mu);font-size:22px;cursor:pointer;line-height:1;padding:0;margin:-4px -4px 0 0}
+.modal-close:hover{color:var(--re)}
+.modal-section{margin-bottom:18px;padding-bottom:14px;border-bottom:1px solid var(--bd)}
+.modal-section:last-child{border-bottom:none;margin-bottom:0;padding-bottom:0}
+.modal-section-title{font-family:'Syne',sans-serif;font-size:10px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--mu);margin-bottom:10px}
+.tk-display{font-family:'JetBrains Mono',monospace;font-size:12px;background:var(--s2);padding:8px 11px;border-radius:6px;border:1px solid var(--bd);color:var(--mu);word-break:break-all}
+.sync-status-line{font-size:11px;color:var(--mu);margin-top:6px;display:flex;align-items:center;gap:6px}
+.help-link{font-size:11px;color:var(--bl);text-decoration:underline;cursor:pointer}
+.alert-box{padding:11px 13px;border-radius:6px;font-size:12px;line-height:1.5;margin-bottom:12px}
+.alert-info{background:rgba(96,165,250,.08);border-left:3px solid var(--bl);color:var(--tx)}
+.alert-warn{background:rgba(251,191,36,.08);border-left:3px solid var(--yl);color:var(--tx)}
+.alert-err{background:rgba(248,113,113,.08);border-left:3px solid var(--re);color:var(--tx)}
+.alert-ok{background:rgba(74,222,128,.08);border-left:3px solid var(--gr);color:var(--tx)}
+@media(max-width:680px){
+  .sg{grid-template-columns:1fr 1fr}.tg{grid-template-columns:1fr 1fr}
+  .fg2{grid-template-columns:1fr}
+  .hprog{display:none}
+  nav button{padding:6px 8px;font-size:11px}
+  header{padding:0 12px;gap:8px}
+  main{padding:18px 12px}
+  .pv-grid{grid-template-columns:1fr 1fr}
+  .sync-ind .sync-text{display:none}
+  .q-disc-head{grid-template-columns:14px 1fr 60px 50px}
+  .q-disc-head .q-bar{display:none}
+  .q-topic{grid-template-columns:1fr 50px 40px}
+  .q-topic > :nth-child(3){display:none}
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">APROVADO<span>·Tracker</span></div>
+  <div class="sync-ind" id="syncInd" onclick="openSettings()" title="Configurar sincronização">
+    <span class="sync-dot s-unconfigured" id="syncDot"></span>
+    <span class="sync-text" id="syncText">Não conectado</span>
+  </div>
+  <div class="hprog" id="hProg"></div>
+  <nav>
+    <button class="active" onclick="goTab('hoje')">Hoje</button>
+    <button onclick="goTab('meta')">Meta</button>
+    <button onclick="goTab('disciplinas')">Disciplinas</button>
+    <button onclick="goTab('previsao')">Previsão</button>
+    <button onclick="goTab('questoes')">Questões</button>
+    <button onclick="goTab('importar')">+ Importar</button>
+  </nav>
+  <button class="gear-btn" onclick="openSettings()" title="Configurações">⚙</button>
+</header>
+
+<main>
+
+<div id="tab-hoje" class="tab active">
+  <div id="saudBlock"></div>
+  <div class="sg" id="statsGrid"></div>
+  <div class="tg" id="typeGrid"></div>
+  <div class="card">
+    <div class="ct">⚡ Foco de Hoje</div>
+    <div id="hojeBar"></div>
+    <div id="hojeList"></div>
+  </div>
+  <div class="card" id="cardProx" style="display:none">
+    <div class="ct">🔜 Na Fila</div>
+    <div id="proxList"></div>
+  </div>
+</div>
+
+<div id="tab-meta" class="tab">
+  <div class="sh">
+    <div class="stit">Meta da Semana</div>
+    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+      <span class="meta-label">Horas disponíveis nesta semana:</span>
+      <input type="number" id="metaHoras" class="hrs-input" value="24" min="1" max="80">
+      <button class="btn btn-p" onclick="renderMeta()">Gerar plano ↻</button>
+    </div>
+  </div>
+  <div id="metaContent"></div>
+</div>
+
+<div id="tab-disciplinas" class="tab">
+  <div class="sh">
+    <div class="stit">Disciplinas</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <button class="btn btn-g" onclick="exportar()">↓ Exportar JSON</button>
+      <label class="btn btn-g" style="cursor:pointer">
+        ↑ Importar JSON
+        <input type="file" accept=".json" style="display:none" onchange="importarBackup(this)">
+      </label>
+      <button class="btn btn-s" style="color:var(--re)" onclick="resetarProgresso()">↺ Reset</button>
+    </div>
+  </div>
+  <div id="discList"></div>
+</div>
+
+<div id="tab-previsao" class="tab">
+  <div class="sh">
+    <div class="stit">Previsão de Conclusão</div>
+    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+      <span class="meta-label">h/dia</span>
+      <input type="number" id="pvHoras" class="hrs-input" style="width:55px;font-size:15px" value="4" min="1" max="12" oninput="renderPrevisao()">
+      <span class="meta-label">dias/sem</span>
+      <input type="number" id="pvDias" class="hrs-input" style="width:55px;font-size:15px" value="6" min="1" max="7" oninput="renderPrevisao()">
+    </div>
+  </div>
+  <div id="previsaoContent"></div>
+</div>
+
+<div id="tab-questoes" class="tab">
+  <div class="sh">
+    <div class="stit">Questões</div>
+    <div id="qInfoLabel" style="font-size:11px;color:var(--mu)"></div>
+  </div>
+  <div id="questoesContent"></div>
+</div>
+
+<div id="tab-importar" class="tab">
+  <div class="stit" style="margin-bottom:6px">Importar Conteúdo</div>
+  <div style="font-size:12px;color:var(--mu);margin-bottom:18px">Cole o output do NotebookLM, preencha manualmente, ou faça upload do xlsx do TecConcursos.</div>
+  <div class="imp-tabs">
+    <button class="imp-tab active" onclick="switchImp('nlm',this)">📋 Colar NotebookLM</button>
+    <button class="imp-tab" onclick="switchImp('form',this)">✏️ Formulário</button>
+    <button class="imp-tab" onclick="switchImp('xlsx',this)">📊 Estatísticas TecConcursos</button>
+  </div>
+  <div id="imp-nlm" class="imp-panel active">
+    <div class="card">
+      <div class="ct">Identificação</div>
+      <div class="fg2">
+        <div class="fg"><label>Disciplina</label><select id="nlm-disc"></select></div>
+        <div class="fg"><label>Código da Aula</label><input id="nlm-cod" placeholder="Ex: Aula 03"></div>
+        <div class="fg full"><label>Título</label><input id="nlm-tit" placeholder="Ex: Plenário – Sessões"></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="ct">Output do NotebookLM</div>
+      <textarea id="nlm-txt" style="min-height:160px;font-family:monospace;font-size:11px" placeholder="Cole aqui o texto completo gerado pelo NotebookLM..."></textarea>
+      <div style="margin-top:10px;display:flex;gap:8px">
+        <button class="btn btn-p" onclick="parsearNLM()">🔍 Parsear</button>
+        <button class="btn btn-g" onclick="document.getElementById('nlm-txt').value=''">Limpar</button>
+      </div>
+      <div id="nlm-preview"></div>
+    </div>
+  </div>
+  <div id="imp-form" class="imp-panel">
+    <div class="card">
+      <div class="ct">Identificação</div>
+      <div class="fg2">
+        <div class="fg"><label>Disciplina</label><select id="f-disc"></select></div>
+        <div class="fg"><label>Código</label><input id="f-cod" placeholder="Ex: Aula 03"></div>
+        <div class="fg full"><label>Título</label><input id="f-tit"></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="ct">Tarefas</div>
+      <div id="tfList"></div>
+      <button class="btn btn-g" onclick="addTF()">+ Tarefa</button>
+    </div>
+    <div style="display:flex;gap:10px;justify-content:flex-end">
+      <button class="btn btn-g" onclick="goTab('disciplinas')">Cancelar</button>
+      <button class="btn btn-p" onclick="salvarManual()">✔ Salvar</button>
+    </div>
+  </div>
+  <div id="imp-xlsx" class="imp-panel">
+    <div class="card">
+      <div class="ct">Importar estatística do TecConcursos</div>
+      <div class="alert-box alert-info">
+        <strong>Como obter o arquivo:</strong> No TecConcursos, vá em Estatísticas → Atividades → clique no botão de download (ícone de planilha) para baixar o xlsx com seus dados detalhados por tópico.
+      </div>
+      <div class="fg2">
+        <div class="fg full"><label>Rótulo deste import</label>
+          <input id="xls-label" placeholder="Ex: Câmara dos Deputados — Maio/2026"></div>
+        <div class="fg full"><label>Arquivo xlsx</label>
+          <input id="xls-file" type="file" accept=".xlsx,.xls" onchange="lerXlsx(this)"></div>
+      </div>
+      <div id="xls-preview" style="margin-top:14px"></div>
+    </div>
+  </div>
+</div>
+
+</main>
+
+<div id="modal-settings" class="modal-bg">
+  <div class="modal">
+    <button class="modal-close" onclick="closeSettings()">✕</button>
+    <h3>Configurações</h3>
+    <div class="sub">Conecte com o GitHub para sincronizar seus dados entre dispositivos.</div>
+    <div class="modal-section">
+      <div class="modal-section-title">🔄 Sincronização (GitHub Gist)</div>
+      <div id="syncSettings"></div>
+    </div>
+    <div class="modal-section">
+      <div class="modal-section-title">⚖ Pesos das Disciplinas</div>
+      <div id="weightsSettings"></div>
+    </div>
+    <div class="modal-section">
+      <div class="modal-section-title">⏱ Configuração de Estudo</div>
+      <div class="fg2">
+        <div class="fg"><label>Horas por dia (padrão)</label>
+          <input type="number" id="cfg-hd" min="1" max="12" oninput="updateConfig()"></div>
+        <div class="fg"><label>Dias por semana</label>
+          <input type="number" id="cfg-ds" min="1" max="7" oninput="updateConfig()"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const TYPES = {
+  TEORIA:     {label:'Teoria',     cor:'#60a5fa', dot:'rgba(96,165,250,.8)'},
+  LEI_SECA:   {label:'Lei Seca',   cor:'#4ade80', dot:'rgba(74,222,128,.8)'},
+  TEORIA_LEI: {label:'Teoria+Lei', cor:'#c084fc', dot:'rgba(192,132,252,.8)'},
+  QUESTOES:   {label:'Questões',   cor:'#f5a623', dot:'rgba(245,166,35,.8)'},
+  REVISAO:    {label:'Revisão',    cor:'#22d3ee', dot:'rgba(34,211,238,.8)'},
+  MAPEAMENTO: {label:'Mapeamento', cor:'#f87171', dot:'rgba(248,113,113,.8)'},
+};
+
+const TODAY_ISO = new Date().toISOString().split('T')[0];
+const SEED = {
+  config:{horasPorDia:4, diasPorSemana:6, dataInicio:TODAY_ISO, githubToken:'', gistId:'', lastModified:Date.now(), lastSyncAt:null},
+  disciplinas:[
+    {id:'port', nome:'Língua Portuguesa',         peso:34, cor:'#3266ad', aulas:[]},
+    {id:'regi', nome:'Regimento Interno + Comum', peso:29, cor:'#1D9E75', aulas:[
+      {id:'regi-a00', codigo:'Aula 00', titulo:'Mesa Diretora – Órgãos Iniciais', tarefas:[
+        {id:'r00t1',label:'Tarefa 1',type:'TEORIA_LEI',primaryType:'TEORIA',edital:'ok',paginas:'6–26',
+         topico:'Introdução, Sede, Sessões Legislativas e Posse',
+         descricao:'Introdução ao RICD, Da Sede, Sessões Legislativas, Sessões Preparatórias e Posse.',
+         comando:'Leia os Arts. 1º ao 4º do RICD com o material teórico. Atenção redobrada à suspensão do recesso legislativo e aos procedimentos de posse.',
+         leiSeca:[{dispositivo:'RICD',artigos:'Arts. 1º ao 4º',motivo:'FGV cobra exceções procedimentais para alteração da Sede e datas precisas de posse.'},
+                  {dispositivo:'CF',artigos:'Arts. 44, 51 e 57',motivo:'Complementam a fundamentação das sessões legislativas e quóruns de convocação.'}],
+         duracaoMin:80,duracaoMax:100,status:'pendente',
+         bizus:['Mesa pode decidir por outro edifício/local, mas exige referendo da maioria absoluta do Plenário.','Sessão Legislativa Ordinária não será interrompida em 17 de julho se a LDO não for aprovada.','Posse: chamada Norte→Sul e alfabética. Diploma até 31 de janeiro.','Posse por procuração é expressamente vedada.'],
+         filtros:['Págs. 3-5: PULAR — Apresentação do curso.','Págs. 17 e 20: SKIMMING — Tabelas ilustrativas.'],
+         keywords:['RICD','Sede','Sessão Legislativa Ordinária','LDO','Sessão Preparatória','Posse de Deputados Federais']},
+        {id:'r00t2',label:'Tarefa 2',type:'TEORIA_LEI',primaryType:'TEORIA',edital:'ok',paginas:'27–51',
+         topico:'Sessões Preparatórias – Eleição da Mesa',
+         descricao:'Eleição da Mesa, PPP, Formação de Blocos, Escrutínios, Eleição Extemporânea.',
+         comando:'Leia os Arts. 5º a 8º do RICD. Foque em como se formam Mesa e Blocos.',
+         leiSeca:[{dispositivo:'RICD',artigos:'Arts. 5º ao 8º',motivo:'Prazos de vacância e princípio da proporcionalidade despencam em provas.'}],
+         duracaoMin:100,duracaoMax:125,status:'pendente',
+         bizus:['Mesa: 2 anos, vedada recondução para o mesmo cargo na mesma legislatura.','Vaga até 30/nov do 2º ano → eleição em até 5 sessões. Após: Mesa designa.','Empate: mais legislaturas; persiste: mais idoso.','Mudou de partido? Perde o cargo na Mesa (Art. 8º §5º).'],
+         filtros:['Págs. 34-35: SKIMMING — Tabelas longas de cálculo.'],
+         keywords:['Eleição da Mesa Diretora','PPP','Blocos Parlamentares','Vacância na Mesa','Escrutínio Secreto']},
+        {id:'r00t3',label:'Tarefa 3',type:'TEORIA_LEI',primaryType:'TEORIA',edital:'ok',paginas:'52–74',
+         topico:'Mesa e Início do Presidente da Câmara',
+         descricao:'Comissão Diretora, Competências da Mesa, ADI, Competências do Presidente.',
+         comando:'Liste em papel competências da Mesa vs. do Presidente. Leia Arts. 14-17 (1ª parte).',
+         leiSeca:[{dispositivo:'RICD',artigos:'Arts. 14-17 (parcial)',motivo:'Núcleo de governança da Câmara. Arts. 15 (Mesa) e 17 (Presidente) caem massivamente.'}],
+         duracaoMin:90,duracaoMax:110,status:'pendente',
+         bizus:['Mesa (não Plenário) declara a perda do mandato.','Mesa propõe ADI. Presidente apenas representa a Câmara se já em curso.','Ad referendum: EXCETO suspensão cautelar de mandato.','Em votações abertas, Presidente só desempata. Em secretas, vota.'],
+         filtros:['Pág. 53: SKIMMING — Imagem ilustrativa.','Pág. 68: PULAR — Foto do Plenário.'],
+         keywords:['Comissão Diretora','Competências da Mesa','Perda de Mandato','Ad Referendum','Competências do Presidente','Desempate']},
+        {id:'r00t4',label:'Tarefa 4',type:'TEORIA_LEI',primaryType:'TEORIA',edital:'ok',paginas:'75–94',
+         topico:'Competências do Presidente, Vices, Secretaria',
+         descricao:'Vice-Presidentes, Atribuições dos Secretários, Suplentes, Resumo.',
+         comando:'Leia Arts. 17 (final), 18, 19 e 19-A. Foque na hierarquia de substituição.',
+         leiSeca:[{dispositivo:'RICD',artigos:'Arts. 17 (final) ao 19-A',motivo:'Banca troca numerações dos secretários e regras de substituição.'}],
+         duracaoMin:80,duracaoMax:100,status:'pendente',
+         bizus:['Substituição: 1º Vice → 2º Vice → 1º Sec → 2º Sec → 3º Sec → 4º Sec → Suplentes → Mais idoso entre os com mais legislaturas.','1º Sec é o "prefeito da Câmara": serviços, posse do Diretor-Geral, ofícios a Ministros.','Suplentes participam da Mesa mas não relatam matéria reservada.'],
+         filtros:['Págs. 92-94 (Resumo): LEITURA ATENTA.'],
+         keywords:['Vice-Presidentes','Primeiro-Secretário','Substituição do Presidente','Suplentes','Pedido de Informação']}
+      ]},
+      {id:'regi-a02', codigo:'Aula 02', titulo:'Comissões – Parte 1', tarefas:[
+        {id:'r02t1',label:'Tarefa 1',type:'TEORIA_LEI',primaryType:'TEORIA',edital:'ok',paginas:'3–25',
+         topico:'Conceitos e Classificações de Comissões',
+         descricao:'Base constitucional (Art. 58 CF); classificações: Permanentes × Temporárias, Mistas, Representativas.',
+         comando:'Leia os Arts. 22 a 32 do RICD. Estude págs. 5-25 conectando classificações aos dispositivos.',
+         leiSeca:[{dispositivo:'CF/88',artigos:'Art. 58, §§1º-4º',motivo:'§4º cria a Comissão Representativa do CN (cobrado isoladamente).'},
+                  {dispositivo:'RICD',artigos:'Arts. 22-26',motivo:'Conceito, natureza e classificação.'}],
+         duracaoMin:75,duracaoMax:90,status:'pendente',
+         bizus:['Representativa ≠ Mista. Representativa: Art. 58 §4º CF, só no recesso.','Especial ≠ CPI ≠ Externa — cada uma com quórum e prazo diferentes.','Poder Conclusivo: comissões podem decidir sem Plenário, SALVO recurso de 1/10 dos Deputados.'],
+         filtros:['Págs. 3-4: SKIMMING — Histórico, pule para 1.2 Base Constitucional.'],
+         keywords:['Comissões Permanentes','Comissões Temporárias','Comissão Mista','Comissão Representativa (Art. 58 §4º CF)','Poder Conclusivo']},
+        {id:'r02t2',label:'Tarefa 2',type:'TEORIA',primaryType:'TEORIA',edital:'ok',paginas:'26–50',
+         topico:'Proporcionalidade Partidária e Fixação de Vagas',
+         descricao:'PPP, rodízio das comissões temporárias, fixação de membros, cumulativas vs. não cumulativas.',
+         comando:'Estude págs. 26-50. Foco no quociente partidário e limites percentuais.',
+         leiSeca:[],
+         duracaoMin:75,duracaoMax:90,status:'pendente',
+         bizus:['Banca troca percentuais: mínimo 3,5% (arredondado), máximo 13%.','Cumulativas: vaga nas duas. Não cumulativas: indicação em uma cancela a outra.','Bancada com menos de 1% pode não ter vaga em todas as comissões.'],
+         filtros:['Págs. 31-34: PULAR — Tabelas da 57ª Legislatura.','Págs. 37-38: PULAR imagens.'],
+         keywords:['PPP','Rodízio de Bancadas','Membros: mín. 3,5% / máx. 13%','Cumulativas e Não Cumulativas']},
+        {id:'r02t3',label:'Tarefa 3',type:'TEORIA',primaryType:'TEORIA',edital:'ok',paginas:'51–65',
+         topico:'Composição, Mesas e Subcomissões',
+         descricao:'Quociente partidário, indicações, eleição da Mesa da Comissão, Subcomissões e Turmas.',
+         comando:'Estude págs. 51-65. Atenção às vedações da Mesa e limites de subcomissões.',
+         leiSeca:[],
+         duracaoMin:60,duracaoMax:75,status:'pendente',
+         bizus:['Suplente NÃO pode presidir comissão.','Presidente NÃO pode ser reeleito na mesma legislatura.','Subcomissões Permanentes: máx. 3. Especiais: máx. 3.'],
+         filtros:[],
+         keywords:['Quociente Partidário','Eleição da Mesa da Comissão','Vedação à Reeleição','Suplente não preside','Subcomissões']},
+        {id:'r02t4',label:'Tarefa 4',type:'TEORIA_LEI',primaryType:'TEORIA',edital:'ok',paginas:'66–80',
+         topico:'Reuniões, Perda de Vaga e Resumo',
+         descricao:'Reuniões (Ord., Extraord., Secretas), Atas, perda de vaga, Campos Temáticos, Resumo.',
+         comando:'Leia Arts. 50-56 do RICD. Estude págs. 66-80 com filtro em Campos Temáticos.',
+         leiSeca:[{dispositivo:'RICD',artigos:'Arts. 50-53',motivo:'Tipos de reunião e quórum — cobrado literalmente.'},
+                  {dispositivo:'RICD',artigos:'Art. 55',motivo:'Perda de vaga: 5 faltas consecutivas ou 1/4 intercaladas — banca troca números.'}],
+         duracaoMin:60,duracaoMax:75,status:'pendente',
+         bizus:['Perda de vaga: 5 CONSECUTIVAS OU 1/4 INTERCALADAS. Banca troca.','Reunião Secreta: maioria absoluta dos presentes; Ata reservada.','CCJC: PEC e redação final. CFT: financeiro. CFFC: TCU. CLP: Participativa.'],
+         filtros:['Págs. 63-76 (Campos Temáticos): SKIMMING EXTREMO — Foque em CCJC, CFT, CFFC, CLP.','Págs. 77-80 (Resumo): LEITURA ATENTA.'],
+         keywords:['Reuniões Secretas','Quórum de Instalação','Perda de Vaga','CCJC','CFFC','Atas de Comissão']}
+      ]}
+    ]},
+    {id:'cons', nome:'Direito Constitucional', peso:17, cor:'#7F77DD', aulas:[]},
+    {id:'adm',  nome:'Direito Administrativo', peso:12, cor:'#D85A30', aulas:[]},
+    {id:'ingl', nome:'Língua Inglesa',         peso:8,  cor:'#BA7517', aulas:[]},
+  ],
+  questoes: null
+};
+
+let S;
+let syncState = 'unconfigured';
+let syncTimer = null;
+let lastPushedJson = '';
+let isInitializing = true;
+
+function loadLocal(){
+  try{const r=localStorage.getItem('aprovado-v5');return r?JSON.parse(r):null}catch{return null}
+}
+function saveLocal(){localStorage.setItem('aprovado-v5',JSON.stringify(S))}
+
+function setSyncState(state, msg){
+  syncState = state;
+  const dot = document.getElementById('syncDot');
+  const text = document.getElementById('syncText');
+  if(!dot||!text)return;
+  dot.className = 'sync-dot s-'+state;
+  const labels = {
+    unconfigured: 'Não conectado',
+    syncing: 'Sincronizando…',
+    synced: 'Sincronizado',
+    error: msg || 'Erro de sync'
+  };
+  text.textContent = labels[state] || state;
+}
+
+async function ghFetch(path, opts={}){
+  const headers = {
+    'Authorization': 'Bearer ' + S.config.githubToken,
+    'Accept': 'application/vnd.github+json',
+    'X-GitHub-Api-Version': '2022-11-28',
+    ...(opts.headers||{})
+  };
+  if(opts.body) headers['Content-Type'] = 'application/json';
+  const res = await fetch('https://api.github.com' + path, {...opts, headers});
+  if(!res.ok){
+    const errText = await res.text().catch(()=>'');
+    throw new Error('GitHub API ' + res.status + ': ' + errText.slice(0,200));
+  }
+  return res.json();
+}
+
+async function testToken(token){
+  const res = await fetch('https://api.github.com/user', {
+    headers:{'Authorization':'Bearer '+token, 'Accept':'application/vnd.github+json'}
+  });
+  if(!res.ok) throw new Error('Token inválido (HTTP '+res.status+')');
+  return res.json();
+}
+
+async function createGist(){
+  const data = await ghFetch('/gists', {
+    method:'POST',
+    body: JSON.stringify({
+      description:'APROVADO Tracker — dados de estudo',
+      public:false,
+      files:{'aprovado-data.json':{content: JSON.stringify(S, null, 2)}}
+    })
+  });
+  return data.id;
+}
+
+async function pullGist(){
+  const data = await ghFetch('/gists/' + S.config.gistId);
+  const f = data.files['aprovado-data.json'];
+  if(!f || !f.content) throw new Error('Arquivo não encontrado no Gist');
+  return JSON.parse(f.content);
+}
+
+async function pushGist(){
+  if(!S.config.githubToken || !S.config.gistId) return;
+  const content = JSON.stringify(S, null, 2);
+  if(content === lastPushedJson) return;
+  await ghFetch('/gists/' + S.config.gistId, {
+    method:'PATCH',
+    body: JSON.stringify({files:{'aprovado-data.json':{content}}})
+  });
+  lastPushedJson = content;
+  S.config.lastSyncAt = new Date().toISOString();
+  saveLocal();
+}
+
+function scheduleSync(){
+  if(!S.config.githubToken || !S.config.gistId) return;
+  if(isInitializing) return;
+  setSyncState('syncing');
+  if(syncTimer) clearTimeout(syncTimer);
+  syncTimer = setTimeout(async ()=>{
+    try{
+      await pushGist();
+      setSyncState('synced');
+    }catch(e){
+      console.error(e);
+      setSyncState('error', e.message);
+    }
+  }, 2500);
+}
+
+function saveState(){
+  S.config.lastModified = Date.now();
+  saveLocal();
+  scheduleSync();
+}
+
+S = loadLocal() || JSON.parse(JSON.stringify(SEED));
+if(!S.config) S.config = JSON.parse(JSON.stringify(SEED.config));
+if(typeof S.config.githubToken === 'undefined') S.config.githubToken = '';
+if(typeof S.config.gistId === 'undefined') S.config.gistId = '';
+if(typeof S.config.lastModified === 'undefined') S.config.lastModified = Date.now();
+if(typeof S.questoes === 'undefined') S.questoes = null;
+
+const uid = ()=>Math.random().toString(36).slice(2,9);
+function fmtMin(m){if(m<60)return m+'min';const h=Math.floor(m/60),r=m%60;return r?`${h}h ${r}min`:`${h}h`}
+function fmtDate(d){return d.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric'})}
+function fmtDateTime(iso){if(!iso)return '—';const d=new Date(iso);return d.toLocaleDateString('pt-BR')+' '+d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})}
+function addWeeks(d,w){const r=new Date(d);r.setDate(r.getDate()+Math.ceil(w*7));return r}
+function greet(){const h=new Date().getHours();if(h<12)return'Bom dia, guerreiro! ☀️';if(h<18)return'Boa tarde, guerreiro! ⚡';return'Boa noite, guerreiro! 🌙'}
+function dateStr(){return new Date().toLocaleDateString('pt-BR',{weekday:'long',day:'numeric',month:'long'})}
+function cleanMd(s){return s.replace(/\*\*/g,'').replace(/\*/g,'').replace(/^Bizu\s*\d+:\s*/i,'').trim()}
+function accColor(pct){if(pct>=75)return'var(--gr)';if(pct>=60)return'var(--yl)';return'var(--re)'}
+function accClass(pct){if(pct>=75)return'high';if(pct>=60)return'mid';return'low'}
+
+function allTarefas(){
+  return S.disciplinas.flatMap(d=>d.aulas.flatMap(a=>a.tarefas.map(t=>({...t,discId:d.id,discNome:d.nome,discCor:d.cor,aulaId:a.id,aulaCod:a.codigo,aulaTit:a.titulo}))));
+}
+function pendingTarefas(){return allTarefas().filter(t=>t.status==='pendente')}
+function getPendingForDisc(discId){
+  const d=S.disciplinas.find(x=>x.id===discId);if(!d)return[];
+  return d.aulas.flatMap(a=>a.tarefas.filter(t=>t.status==='pendente').map(t=>({...t,discId:d.id,discNome:d.nome,discCor:d.cor,aulaId:a.id,aulaCod:a.codigo,aulaTit:a.titulo})));
+}
+function getPendingMinsForDisc(id){return getPendingForDisc(id).reduce((s,t)=>s+t.duracaoMin,0)}
+function getTotalMinsForDisc(id){
+  const d=S.disciplinas.find(x=>x.id===id);if(!d)return 0;
+  return d.aulas.flatMap(a=>a.tarefas).reduce((s,t)=>s+t.duracaoMin,0);
+}
+function stats(){
+  const all=allTarefas(),total=all.length,done=all.filter(t=>t.status==='concluida').length;
+  const pct=total?Math.round(done/total*100):0;
+  const tMin=all.reduce((s,t)=>s+t.duracaoMin,0),dMin=all.filter(t=>t.status==='concluida').reduce((s,t)=>s+t.duracaoMin,0);
+  return{total,done,pending:total-done,pct,tMin,dMin};
+}
+function typeStats(){
+  const res={};Object.keys(TYPES).forEach(k=>{res[k]={total:0,done:0}});
+  allTarefas().forEach(t=>{const k=t.primaryType||t.type||'TEORIA';if(res[k]){res[k].total++;if(t.status==='concluida')res[k].done++}});
+  return res;
+}
+function markTask(discId,aulaId,tarId,status){
+  const d=S.disciplinas.find(x=>x.id===discId);if(!d)return;
+  const a=d.aulas.find(x=>x.id===aulaId);if(!a)return;
+  const t=a.tarefas.find(x=>x.id===tarId);if(!t)return;
+  t.status=status;t.concluidaEm=status==='concluida'?new Date().toISOString():null;
+  saveState();renderAll();
+}
+function toggleDet(id){const el=document.getElementById('det-'+id);if(el)el.classList.toggle('open')}
+
+function taskCard(t,withCheck){
+  const done=t.status==='concluida';
+  const tcfg=TYPES[t.type]||TYPES.TEORIA;
+  const hasCmd=t.comando&&t.comando.trim();
+  const hasLei=t.leiSeca&&t.leiSeca.length;
+  const hasBz=t.bizus&&t.bizus.length;
+  const hasFl=t.filtros&&t.filtros.length;
+  const hasKw=t.keywords&&t.keywords.length;
+  const hasDet=hasCmd||hasLei||hasBz||hasFl||hasKw;
+  const edTag=t.edital==='ok'?`<span class="tag-ok">✅ Edital</span>`:t.edital==='ctx'?`<span class="tag-ctx">⚠️ Contexto</span>`:'';
+  const leiRows=hasLei?t.leiSeca.map(l=>`<tr><td>${l.dispositivo}</td><td>${l.artigos}</td><td>${l.motivo}</td></tr>`).join(''):'';
+  return`<div class="ti${done?' done':''}" onclick="toggleDet('${t.id}')">
+  ${withCheck?`<button class="chk${done?' on':''}" onclick="event.stopPropagation();markTask('${t.discId}','${t.aulaId}','${t.id}','${done?'pendente':'concluida'}')">✓</button>`:`<div style="width:21px;min-width:21px"></div>`}
+  <div class="tb">
+    <div class="tr2">
+      <span class="tag tag-disc" style="color:${t.discCor}">${t.aulaCod}</span>
+      <span class="tag" style="color:var(--mu)">${t.label}</span>
+      <span class="tag-ty ty-${t.type}" style="border-color:${tcfg.cor}33;color:${tcfg.cor}">${tcfg.label}</span>
+      ${edTag}${done?`<span class="tag-done">✔ Concluída</span>`:''}
+    </div>
+    <div class="tt">${t.topico}</div>
+    <div class="tm">
+      <span>📄 Pág. ${t.paginas}</span>
+      <span class="mono">⏱ ${fmtMin(t.duracaoMin)}–${fmtMin(t.duracaoMax)}</span>
+      <span style="color:${t.discCor};font-size:10px">${t.discNome}</span>
+      ${hasDet?`<span class="eh">▾ detalhes</span>`:''}
+    </div>
+    ${hasDet?`<div id="det-${t.id}" class="det">
+      ${hasCmd?`<div class="db"><div class="dl">📖 Comando</div><div class="cmd">${t.comando}</div></div>`:''}
+      ${hasLei?`<div class="db"><div class="dl">⚖️ Lei Seca</div><table class="lt"><thead><tr><th>Dispositivo</th><th>Artigos</th><th>Por que cai</th></tr></thead><tbody>${leiRows}</tbody></table></div>`:''}
+      ${hasBz?`<div class="db"><div class="dl">💡 Bizus</div>${t.bizus.map(b=>`<div class="bz">${b}</div>`).join('')}</div>`:''}
+      ${hasFl?`<div class="db"><div class="dl">✂️ Filtros</div>${t.filtros.map(f=>`<div class="fl">${f}</div>`).join('')}</div>`:''}
+      ${hasKw?`<div class="db"><div class="dl">🔑 Palavras-Chave</div><div class="kwl">${t.keywords.map(k=>`<span class="kw">${k}</span>`).join('')}</div></div>`:''}
+    </div>`:''}
+  </div></div>`;
+}
+
+function renderAll(){renderHeader();renderHoje();renderMeta();renderDisciplinas();renderPrevisao();renderQuestoes()}
+
+function renderHeader(){
+  const{pct,done,total}=stats();
+  document.getElementById('hProg').innerHTML=`
+    <div class="pr"><span class="pl">${done}/${total} tarefas</span><span class="pl">${pct}%</span></div>
+    <div class="pw"><div class="pf" style="width:${pct}%"></div></div>`;
+}
+
+function renderHoje(){
+  const{pct,total,done,pending,tMin,dMin}=stats();
+  document.getElementById('saudBlock').innerHTML=`
+    <div class="greet">${greet()}</div>
+    <div class="gsub">${dateStr()} · Analista Legislativo – Registro e Redação · Câmara dos Deputados</div>`;
+  document.getElementById('statsGrid').innerHTML=`
+    <div class="sc"><span class="sv">${pct}%</span><div class="sl">Concluído</div></div>
+    <div class="sc"><span class="sv">${done}</span><div class="sl">Feitas</div></div>
+    <div class="sc"><span class="sv">${pending}</span><div class="sl">Pendentes</div></div>
+    <div class="sc"><span class="sv">${fmtMin(tMin-dMin)}</span><div class="sl">Horas restantes</div></div>`;
+  const ts=typeStats();
+  document.getElementById('typeGrid').innerHTML=Object.keys(TYPES).filter(k=>ts[k].total>0).map(k=>{
+    const cfg=TYPES[k],{total:t,done:d}=ts[k];
+    return`<div class="tc"><div class="td" style="background:${cfg.dot}"></div><div><div class="tn">${cfg.label}</div><div class="tv">${d}/${t}</div></div></div>`;
+  }).join('');
+  const budget=S.config.horasPorDia*60;
+  const pend=pendingTarefas();
+  let used=0,hoje=[];
+  for(const t of pend){if(used+t.duracaoMin<=budget+15){hoje.push(t);used+=t.duracaoMin;if(used>=budget)break}}
+  const pctBar=Math.min(100,Math.round(used/budget*100));
+  document.getElementById('hojeBar').innerHTML=`
+    <div class="tbw"><div class="tbf" style="width:${pctBar}%;background:linear-gradient(90deg,#4ade80,#22d3ee)"></div></div>
+    <div class="tr"><span>${fmtMin(used)} alocados</span><span>${fmtMin(Math.max(0,budget-used))} livres</span></div>`;
+  document.getElementById('hojeList').innerHTML=hoje.length===0
+    ?`<div class="empty">${total===0?'📚 Nenhuma aula cadastrada':'🏆 Tudo concluído!'}</div>`
+    :hoje.map(t=>taskCard(t,true)).join('');
+  const hIds=new Set(hoje.map(t=>t.id));
+  const prox=pend.filter(t=>!hIds.has(t.id)).slice(0,4);
+  const cp=document.getElementById('cardProx');
+  if(prox.length){cp.style.display='';document.getElementById('proxList').innerHTML=prox.map(t=>taskCard(t,false)).join('')}
+  else cp.style.display='none';
+}
+
+function calcMeta(totalMins){
+  const discData=S.disciplinas.map(d=>{
+    const tasks=getPendingForDisc(d.id);
+    const pendMins=tasks.reduce((s,t)=>s+t.duracaoMin,0);
+    const target=Math.round(totalMins*d.peso/100);
+    return{disc:d,tasks,pendMins,target,alloc:Math.min(pendMins,target)};
+  });
+  const surplus=discData.reduce((s,d)=>s+(d.target-d.alloc),0);
+  if(surplus>0){
+    const needMore=discData.filter(d=>d.pendMins>d.alloc);
+    const totalW=needMore.reduce((s,d)=>s+d.disc.peso,0);
+    if(totalW>0) needMore.forEach(d=>{
+      const extra=Math.round(surplus*d.disc.peso/totalW);
+      d.alloc=Math.min(d.pendMins,d.alloc+extra);
+    });
+  }
+  discData.forEach(d=>{
+    let bud=d.alloc;d.selected=[];
+    for(const t of d.tasks){if(bud<=0)break;if(t.duracaoMin<=bud+10){d.selected.push(t);bud-=t.duracaoMin}}
+  });
+  return discData;
+}
+
+function renderMeta(){
+  const totalMins=Math.round((parseFloat(document.getElementById('metaHoras').value)||24)*60);
+  const data=calcMeta(totalMins);
+  const hasContent = data.some(d=>d.tasks.length>0);
+  if(!hasContent){document.getElementById('metaContent').innerHTML=`<div class="empty">📚 Nenhuma tarefa pendente para gerar meta.</div>`;return}
+  let html=`<div class="card"><div class="ct">Distribuição por peso</div>`;
+  data.forEach(d=>{
+    if(d.tasks.length===0 && d.alloc===0)return;
+    const pct=totalMins>0?Math.round(d.alloc/totalMins*100):0;
+    html+=`<div style="display:grid;grid-template-columns:160px 1fr 60px 60px;align-items:center;gap:10px;margin-bottom:8px">
+      <span style="font-size:12px;color:var(--tx);display:flex;align-items:center;gap:6px">
+        <span class="disc-color-dot" style="background:${d.disc.cor}"></span>${d.disc.nome}</span>
+      <div style="background:var(--s3);border-radius:4px;height:22px;overflow:hidden">
+        <div style="background:${d.disc.cor};width:${pct}%;height:100%;opacity:.85;display:flex;align-items:center;padding-left:8px">
+          <span style="font-size:10px;font-weight:600;color:#fff">${pct?pct+'%':''}</span></div></div>
+      <span style="font-size:11px;color:var(--mu);text-align:right;font-family:'JetBrains Mono',monospace">${fmtMin(d.alloc)}</span>
+      <span style="font-size:10px;color:${d.pendMins===0?'var(--gr)':'var(--mu)'}">${d.pendMins===0?'✔ fim':'rest: '+fmtMin(d.pendMins)}</span>
+    </div>`;
+  });
+  html+=`</div>`;
+  data.forEach(d=>{
+    if(!d.selected.length)return;
+    const selMins=d.selected.reduce((s,t)=>s+t.duracaoMin,0);
+    html+=`<div class="disc-alloc">
+      <div class="da-head" onclick="this.parentElement.querySelector('.da-tasks').classList.toggle('open')">
+        <span class="disc-color-dot" style="background:${d.disc.cor}"></span>
+        <span class="da-name">${d.disc.nome}</span>
+        <span class="da-hrs">${fmtMin(selMins)} desta semana</span>
+        <span style="color:var(--mu);font-size:12px">▾</span>
+      </div>
+      <div class="da-bar"><div style="width:${d.alloc?Math.round(selMins/d.alloc*100):0}%;height:100%;background:${d.disc.cor}"></div></div>
+      <div class="da-tasks open">${d.selected.map(t=>taskCard(t,true)).join('')}</div></div>`;
+  });
+  document.getElementById('metaContent').innerHTML=html;
+}
+
+function renderDisciplinas(){
+  if(!S.disciplinas.length){document.getElementById('discList').innerHTML=`<div class="empty">📚 Nenhuma disciplina.</div>`;return}
+  let html='';
+  S.disciplinas.forEach(d=>{
+    const allT=d.aulas.flatMap(a=>a.tarefas);
+    const done=allT.filter(t=>t.status==='concluida').length,total=allT.length;
+    const pct=total?Math.round(done/total*100):100;
+    html+=`<div class="dg">
+      <div class="dh">
+        <span class="disc-color-dot" style="background:${d.cor}"></span>
+        <span class="dn">${d.nome}</span>
+        <span style="font-size:11px;color:var(--mu);background:var(--s3);border:1px solid var(--bd);padding:2px 8px;border-radius:4px">Peso: ${d.peso}%</span>
+        <span class="dpct" style="margin-left:auto">${done}/${total} · ${pct}%</span>
+      </div>
+      <div class="mp"><div class="mpf" style="width:${pct}%;background:${d.cor}"></div></div>`;
+    if(!d.aulas.length){html+=`<div style="font-size:12px;color:var(--mu);padding:8px 0 14px">Nenhuma aula importada.</div>`}
+    d.aulas.forEach(a=>{
+      const at=a.tarefas,ad=at.filter(t=>t.status==='concluida').length;
+      html+=`<div class="ab">
+        <div class="ah">
+          <span class="ac">${a.codigo}</span>
+          <span class="at2">${a.titulo}</span>
+          <span class="atg" style="margin-left:auto">${ad}/${at.length}</span>
+          <button class="btnx" onclick="delAula('${d.id}','${a.id}')">🗑</button>
+        </div>
+        ${a.tarefas.map(t=>taskCard({...t,discId:d.id,discNome:d.nome,discCor:d.cor,aulaId:a.id,aulaCod:a.codigo,aulaTit:a.titulo},true)).join('')}
+      </div>`;
+    });
+    html+=`</div>`;
+  });
+  document.getElementById('discList').innerHTML=html;
+}
+
+function delAula(discId,aulaId){
+  if(!confirm('Remover esta aula?'))return;
+  const d=S.disciplinas.find(x=>x.id===discId);if(!d)return;
+  d.aulas=d.aulas.filter(a=>a.id!==aulaId);saveState();renderAll();
+}
+function resetarProgresso(){
+  if(!confirm('Resetar status de todas as tarefas para pendente?'))return;
+  S.disciplinas.forEach(d=>d.aulas.forEach(a=>a.tarefas.forEach(t=>{t.status='pendente';t.concluidaEm=null})));
+  saveState();renderAll();
+}
+
+function calcPrevisao(hPorDia,dPorSemana){
+  const minsWeek=hPorDia*60*dPorSemana;
+  const today=new Date();
+  return S.disciplinas.map(d=>{
+    const pMins=getPendingMinsForDisc(d.id);
+    const tMins=getTotalMinsForDisc(d.id);
+    const weekAlloc=minsWeek*d.peso/100;
+    const semanas=weekAlloc>0&&pMins>0?pMins/weekAlloc:0;
+    const dataFim=semanas>0?addWeeks(today,semanas):null;
+    const pct=tMins>0?Math.round((tMins-pMins)/tMins*100):100;
+    return{disc:d,pMins,tMins,weekAlloc,semanas,dataFim,pct};
+  });
+}
+
+function renderPrevisao(){
+  const hd=parseFloat(document.getElementById('pvHoras').value)||4;
+  const ds=parseFloat(document.getElementById('pvDias').value)||6;
+  const data=calcPrevisao(hd,ds);
+  const maxSem=Math.max(...data.map(d=>d.semanas).filter(s=>s>0),0);
+  const dataFimGeral=maxSem>0?addWeeks(new Date(),maxSem):null;
+  const totalPMins=data.reduce((s,d)=>s+d.pMins,0);
+  const totalMins=data.reduce((s,d)=>s+d.tMins,0);
+  const pctGeral=totalMins>0?Math.round((totalMins-totalPMins)/totalMins*100):100;
+  let html=`<div class="pv-grid">
+    <div class="pv-card"><span class="pv-val" style="color:var(--amb)">${pctGeral}%</span><div class="pv-lbl">Concluído</div></div>
+    <div class="pv-card"><span class="pv-val" style="color:var(--bl)">${fmtMin(totalPMins)}</span><div class="pv-lbl">Horas restantes</div></div>
+    <div class="pv-card"><span class="pv-val" style="color:var(--pu)">${maxSem>0?Math.ceil(maxSem)+'sem':'—'}</span><div class="pv-lbl">Semanas até fim</div></div>
+    <div class="pv-card"><span class="pv-val" style="color:var(--gr);font-size:16px">${dataFimGeral?fmtDate(dataFimGeral):'—'}</span><div class="pv-lbl">Data prevista</div></div>
+  </div>`;
+  html+=`<div class="card"><div class="ct">Por disciplina</div>`;
+  data.forEach(d=>{
+    const done=d.pct===100;
+    html+=`<div style="display:grid;grid-template-columns:180px 1fr 70px 110px;align-items:center;gap:10px;margin-bottom:10px">
+      <span style="font-size:12px;color:var(--tx);display:flex;align-items:center;gap:6px">
+        <span class="disc-color-dot" style="background:${d.disc.cor}"></span>${d.disc.nome}</span>
+      <div>
+        <div style="background:var(--s3);border-radius:99px;height:6px;overflow:hidden"><div style="background:${d.disc.cor};width:${d.pct}%;height:100%;border-radius:99px"></div></div>
+        <div style="font-size:10px;color:var(--mu);margin-top:2px">${d.pct}% · ${fmtMin(d.pMins)} restantes</div>
+      </div>
+      <span style="font-family:'JetBrains Mono',monospace;font-size:12px;color:${done?'var(--gr)':'var(--tx)'};text-align:right">${done?'✔':d.semanas>0?Math.ceil(d.semanas)+'sem':'—'}</span>
+      <span style="font-size:11px;color:${done?'var(--gr)':'var(--mu)'};text-align:right">${done?'Concluída':d.dataFim?fmtDate(d.dataFim):'—'}</span>
+    </div>`;
+  });
+  html+=`</div>`;
+  html+=`<div class="what-if"><div class="ct">E se eu estudar mais? (${ds} dias/sem fixo)</div>`;
+  [2,3,4,5,6,8].forEach(h=>{
+    const d2=calcPrevisao(h,ds);
+    const mSem=Math.max(...d2.map(d=>d.semanas).filter(s=>s>0),0);
+    const df=mSem>0?addWeeks(new Date(),mSem):null;
+    const isActive=h===Math.round(hd);
+    html+=`<div class="wi-row${isActive?' wi-active':''}">
+      <span class="wi-h">${h}h/dia</span>
+      <div class="wi-bar"><div class="wi-fill" style="width:${mSem>0?Math.min(100,Math.round(100/mSem*4)):100}%"></div></div>
+      <span class="wi-date">${df?fmtDate(df):'Concluído'}${isActive?' ←':''}</span>
+    </div>`;
+  });
+  html+=`</div>`;
+  document.getElementById('previsaoContent').innerHTML=html;
+}
+
+function parseXlsxQuestoes(arrayBuffer){
+  const wb = XLSX.read(arrayBuffer, {type:'array'});
+  const sheet = wb.Sheets[wb.SheetNames[0]];
+  const rows = XLSX.utils.sheet_to_json(sheet, {defval:null, raw:true});
+  const disciplinas = [];
+  let currentDisc = null;
+  for(const row of rows){
+    const hier = row['Hierarquia'];
+    const nome = row['índice'] || row['indice'] || row['Índice'];
+    if(!nome) continue;
+    const qr = Number(row['Questões Resolvidas']||0);
+    const ac = Number(row['Quantidade de acertos']||0);
+    const er = Number(row['Quantidade de erros']||0);
+    const pa = Number(row['Acertos (%)']||0);
+    const pe = Number(row['Erros (%)']||0);
+    const peso = Number(row['Peso']||1);
+    const item = {nome, qResolvidas:qr, acertos:ac, erros:er, pctAcerto:pa, pctErro:pe, peso};
+    if(hier==null||hier===''||hier===undefined){
+      currentDisc = {...item, topicos:[]};
+      disciplinas.push(currentDisc);
+    }else{
+      if(!currentDisc)continue;
+      currentDisc.topicos.push({...item, codigo: String(hier)});
+    }
+  }
+  const total = disciplinas.reduce((s,d)=>s+d.qResolvidas,0);
+  const totalA = disciplinas.reduce((s,d)=>s+d.acertos,0);
+  const totalE = disciplinas.reduce((s,d)=>s+d.erros,0);
+  const pctGeral = total>0?Math.round(totalA/total*1000)/10:0;
+  return {disciplinas, total, totalAcertos:totalA, totalErros:totalE, pctGeral};
+}
+
+let _xlsxParsed = null;
+function lerXlsx(input){
+  const file = input.files[0];if(!file)return;
+  const reader = new FileReader();
+  reader.onload = e=>{
+    try{
+      _xlsxParsed = parseXlsxQuestoes(e.target.result);
+      const lbl = document.getElementById('xls-label').value.trim() || file.name.replace(/\.xlsx?$/,'');
+      const d = _xlsxParsed;
+      const weakCount = d.disciplinas.filter(x=>x.pctAcerto<60 && x.qResolvidas>=5).length;
+      document.getElementById('xls-preview').innerHTML = `
+        <div class="parse-preview">
+          <div style="font-size:12px;color:var(--gr);margin-bottom:14px">✔ Arquivo lido com sucesso</div>
+          <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px">
+            <div class="sc"><span class="sv">${d.total}</span><div class="sl">Questões</div></div>
+            <div class="sc"><span class="sv" style="color:${accColor(d.pctGeral)}">${d.pctGeral}%</span><div class="sl">Acerto</div></div>
+            <div class="sc"><span class="sv">${d.disciplinas.length}</span><div class="sl">Matérias</div></div>
+            <div class="sc"><span class="sv" style="color:var(--re)">${weakCount}</span><div class="sl">Pontos fracos</div></div>
+          </div>
+          <div style="display:flex;gap:10px">
+            <button class="btn btn-p" onclick="confirmarXlsx()">✔ Confirmar e salvar</button>
+            <button class="btn btn-g" onclick="document.getElementById('xls-preview').innerHTML='';_xlsxParsed=null;document.getElementById('xls-file').value=''">Cancelar</button>
+          </div>
+        </div>`;
+    }catch(err){
+      document.getElementById('xls-preview').innerHTML = `<div class="alert-box alert-err">Erro ao ler arquivo: ${err.message}</div>`;
+    }
+  };
+  reader.readAsArrayBuffer(file);
+}
+function confirmarXlsx(){
+  if(!_xlsxParsed)return;
+  const lbl = document.getElementById('xls-label').value.trim() || 'Import sem nome';
+  S.questoes = {
+    importadoEm: new Date().toISOString(),
+    label: lbl,
+    total: _xlsxParsed.total,
+    acertos: _xlsxParsed.totalAcertos,
+    erros: _xlsxParsed.totalErros,
+    pctGeral: _xlsxParsed.pctGeral,
+    disciplinas: _xlsxParsed.disciplinas
+  };
+  saveState();
+  document.getElementById('xls-label').value='';
+  document.getElementById('xls-file').value='';
+  document.getElementById('xls-preview').innerHTML='';
+  _xlsxParsed = null;
+  goTab('questoes');renderAll();
+}
+
+let qShowAll = false;
+let qMinQ = 1;
+function renderQuestoes(){
+  const c = document.getElementById('questoesContent');
+  if(!S.questoes){
+    c.innerHTML = `<div class="empty">
+      <div style="font-size:36px;margin-bottom:14px">📊</div>
+      <div style="margin-bottom:14px">Nenhuma estatística importada ainda.</div>
+      <button class="btn btn-p" onclick="goTab('importar');setTimeout(()=>document.querySelector('.imp-tab:nth-child(3)').click(),50)">Importar planilha TecConcursos</button>
+    </div>`;
+    document.getElementById('qInfoLabel').textContent = '';
+    return;
+  }
+  const q = S.questoes;
+  document.getElementById('qInfoLabel').textContent = `${q.label} · importado em ${fmtDate(new Date(q.importadoEm))}`;
+  let html = '';
+  const allTopicos = q.disciplinas.flatMap(d => d.topicos.map(t => ({...t, discNome: d.nome})));
+  const weakTopicos = allTopicos
+    .filter(t => t.qResolvidas >= 5 && t.pctAcerto < 60)
+    .sort((a,b) => a.pctAcerto - b.pctAcerto)
+    .slice(0, 10);
+  const visibleDisc = qShowAll ? q.disciplinas : q.disciplinas.filter(d => d.qResolvidas >= qMinQ);
+  const weakDiscCount = q.disciplinas.filter(d=>d.pctAcerto<60 && d.qResolvidas>=5).length;
+  html += `<div class="sg">
+    <div class="sc"><span class="sv">${q.total}</span><div class="sl">Questões</div></div>
+    <div class="sc"><span class="sv" style="color:${accColor(q.pctGeral)}">${q.pctGeral}%</span><div class="sl">Acerto Geral</div></div>
+    <div class="sc"><span class="sv">${q.disciplinas.length}</span><div class="sl">Matérias</div></div>
+    <div class="sc"><span class="sv" style="color:var(--re)">${weakDiscCount}</span><div class="sl">Matérias <60%</div></div>
+  </div>`;
+  if(weakTopicos.length){
+    html += `<div class="card"><div class="ct">🎯 Pontos Fracos (≥5 questões, <60% acerto)</div><div class="q-weak-list">`;
+    weakTopicos.forEach(t => {
+      html += `<div class="q-weak-item">
+        <div>
+          <div class="q-weak-name">${t.nome}</div>
+          <div class="q-weak-disc">${t.discNome} · ${t.codigo||''}</div>
+        </div>
+        <div class="q-acc low">${Math.round(t.pctAcerto)}%</div>
+        <div class="q-vol">${t.acertos}/${t.qResolvidas} acertos</div>
+      </div>`;
+    });
+    html += `</div></div>`;
+  }
+  html += `<div class="q-filter-bar">
+    <span class="meta-label">Mín. questões resolvidas:</span>
+    <input type="number" id="qMinQ" value="${qMinQ}" min="0" max="500" class="hrs-input" style="width:60px;font-size:14px" oninput="qMinQ=parseInt(this.value)||0;renderQuestoes()">
+    <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--mu);cursor:pointer">
+      <input type="checkbox" style="width:auto" ${qShowAll?'checked':''} onchange="qShowAll=this.checked;renderQuestoes()"> Mostrar todas
+    </label>
+    <span style="color:var(--mu);font-size:11px;margin-left:auto">${visibleDisc.length} de ${q.disciplinas.length} matérias</span>
+  </div>`;
+  visibleDisc.sort((a,b)=>b.qResolvidas-a.qResolvidas);
+  visibleDisc.forEach((d,i) => {
+    const acc = Math.round(d.pctAcerto);
+    const accCl = accClass(acc);
+    const accCol = accColor(acc);
+    html += `<div class="q-disc-card">
+      <div class="q-disc-head" onclick="this.nextElementSibling.classList.toggle('open')">
+        <span class="disc-color-dot" style="background:${accCol}"></span>
+        <span class="q-disc-name">${d.nome}</span>
+        <div class="q-bar"><div class="q-bar-fill" style="width:${acc}%;background:${accCol}"></div></div>
+        <div>
+          <div class="q-acc ${accCl}">${acc}%</div>
+          <div class="q-vol">${d.acertos}/${d.qResolvidas}</div>
+        </div>
+        <span style="color:var(--mu);font-size:12px;text-align:right">▾</span>
+      </div>
+      <div class="q-topics">`;
+    if(d.topicos.length === 0){
+      html += `<div style="padding:14px 0;font-size:12px;color:var(--mu);text-align:center">Sem tópicos detalhados.</div>`;
+    } else {
+      d.topicos.forEach(t => {
+        const level = (t.codigo||'').split('.').length;
+        const tAcc = Math.round(t.pctAcerto);
+        html += `<div class="q-topic" style="padding-left:${(level-1)*16}px">
+          <div class="q-topic-name">${t.codigo||''} ${t.nome}</div>
+          <div class="q-acc ${accClass(tAcc)}" style="font-size:12px">${t.qResolvidas>0?tAcc+'%':'—'}</div>
+          <div class="q-vol">${t.acertos}/${t.qResolvidas}</div>
+          <div></div>
+        </div>`;
+      });
+    }
+    html += `</div></div>`;
+  });
+  c.innerHTML = html;
+}
+
+function parseNLM(text){
+  const tasks=[];
+  const blocks=text.split(/(?=#{4,5}\s*TAREFA\s+\d+)/i).filter(b=>b.trim()&&/TAREFA\s+\d+/i.test(b));
+  blocks.forEach((block,i)=>{
+    const hm=block.match(/TAREFA\s+(\d+)\s*[—\-]+\s*([A-Z_]+)/i);
+    const type=hm?hm[2].toUpperCase().trim():'TEORIA';
+    const valid=['TEORIA','LEI_SECA','TEORIA_LEI','QUESTOES','REVISAO','MAPEAMENTO'];
+    const finalType=valid.includes(type)?type:'TEORIA';
+    const primType=finalType==='TEORIA_LEI'?'TEORIA':finalType;
+    const pagM=block.match(/\*{0,2}P[áa]ginas\*{0,2}:?\s*([\d]+[\s–\-]+[\d]+)/i);
+    const paginas=pagM?pagM[1].replace(/\s/g,'–'):'—';
+    const durM=block.match(/dura[çc][ãa]o[^:]*:?\s*(\d+)\s*[–\-]\s*(\d+)/i);
+    const durMin=durM?parseInt(durM[1]):75,durMax=durM?parseInt(durM[2]):90;
+    const edM=block.match(/\*{0,2}Edital\*{0,2}:?\s*(✅|⚠️)/);
+    const edital=edM?edM[1]==='✅'?'ok':'ctx':'ok';
+    const topM=block.match(/\*{0,2}T[óo]pico\s+principal\*{0,2}:?\s*(.+)/i);
+    const topico=topM?cleanMd(topM[1]):`Tarefa ${i+1}`;
+    const getSec=(emoji)=>{
+      const re=new RegExp(`${emoji}[^\\n]*\\n([\\s\\S]*?)(?=\\n#{4,6}|$)`,'i');
+      const m=block.match(re);return m?m[1].trim():'';
+    };
+    const comando=getSec('📖').replace(/^#+\s*/gm,'').trim();
+    const leiSec=getSec('⚖️');
+    const leiSeca=[];
+    const tableRows=leiSec.match(/\|([^|]+)\|([^|]+)\|([^|]+)\|/g)||[];
+    tableRows.forEach(row=>{
+      const cols=row.split('|').map(c=>c.trim()).filter(Boolean);
+      if(cols.length>=3&&!cols[0].match(/^[-\s]+$/)&&!cols[0].toLowerCase().includes('dispositivo')){
+        leiSeca.push({dispositivo:cols[0],artigos:cols[1],motivo:cols[2]});
+      }
+    });
+    const parseBullets=(sec)=>sec.split('\n').filter(l=>/^[•\-\*]/.test(l.trim())).map(l=>cleanMd(l.replace(/^[•\-\*]\s*/,''))).filter(Boolean);
+    const filtros=parseBullets(getSec('✂️'));
+    const bizus=parseBullets(getSec('💡'));
+    const kwSec=getSec('🔑');
+    let keywords=[];
+    kwSec.split('\n').filter(l=>/^[•\-\*]/.test(l.trim())).map(l=>l.replace(/^[•\-\*]\s*/,'').trim()).forEach(b=>{
+      keywords=keywords.concat(b.split(',').map(k=>cleanMd(k)).filter(Boolean));
+    });
+    tasks.push({id:uid(),label:`Tarefa ${i+1}`,type:finalType,primaryType:primType,edital,paginas,topico,descricao:'',comando,leiSeca,duracaoMin:durMin,duracaoMax:durMax,status:'pendente',bizus,filtros,keywords});
+  });
+  return tasks;
+}
+let _parsedTasks=[];
+function parsearNLM(){
+  const txt=document.getElementById('nlm-txt').value;
+  const cod=document.getElementById('nlm-cod').value.trim();
+  const tit=document.getElementById('nlm-tit').value.trim();
+  if(!txt.trim()){alert('Cole o texto do NotebookLM.');return}
+  if(!cod||!tit){alert('Preencha código e título.');return}
+  _parsedTasks=parseNLM(txt);
+  if(!_parsedTasks.length){document.getElementById('nlm-preview').innerHTML=`<div class="alert-box alert-err">Nenhuma tarefa encontrada.</div>`;return}
+  let html=`<div class="parse-preview"><div style="font-size:12px;color:var(--gr);margin-bottom:12px">✔ ${_parsedTasks.length} tarefa(s) encontrada(s)</div>`;
+  const discId=document.getElementById('nlm-disc').value;
+  const disc=S.disciplinas.find(d=>d.id===discId)||S.disciplinas[0];
+  _parsedTasks.forEach(t=>{
+    const ft={...t,discId:disc?disc.id:'',discNome:disc?disc.nome:'',discCor:disc?disc.cor:'#888',aulaId:'preview',aulaCod:cod,aulaTit:tit};
+    html+=taskCard(ft,false);
+  });
+  html+=`<div style="margin-top:14px;display:flex;gap:10px"><button class="btn btn-p" onclick="confirmarNLM()">✔ Confirmar</button><button class="btn btn-g" onclick="document.getElementById('nlm-preview').innerHTML=''">Cancelar</button></div></div>`;
+  document.getElementById('nlm-preview').innerHTML=html;
+}
+function confirmarNLM(){
+  const discId=document.getElementById('nlm-disc').value;
+  const cod=document.getElementById('nlm-cod').value.trim();
+  const tit=document.getElementById('nlm-tit').value.trim();
+  const d=S.disciplinas.find(x=>x.id===discId);if(!d)return;
+  d.aulas.push({id:uid(),codigo:cod,titulo:tit,tarefas:_parsedTasks.map(t=>({...t,id:uid()}))});
+  saveState();
+  document.getElementById('nlm-cod').value='';document.getElementById('nlm-tit').value='';document.getElementById('nlm-txt').value='';
+  document.getElementById('nlm-preview').innerHTML='';_parsedTasks=[];
+  goTab('disciplinas');renderAll();
+}
+
+let tfForms=[];
+function initForm(){tfForms=[{id:uid()}];renderForms()}
+function addTF(){tfForms.push({id:uid()});renderForms()}
+function removeTF(id){tfForms=tfForms.filter(t=>t.id!==id);renderForms()}
+function renderForms(){
+  const typeOpts=Object.keys(TYPES).map(k=>`<option value="${k}">${TYPES[k].label}</option>`).join('');
+  document.getElementById('tfList').innerHTML=tfForms.map((t,i)=>`
+    <div class="tblock">
+      <div class="tbh"><span class="tbn">Tarefa ${i+1}</span>${tfForms.length>1?`<button class="btnx" onclick="removeTF('${t.id}')">✕</button>`:''}</div>
+      <div class="fg2">
+        <div class="fg"><label>Tipo</label><select id="ty-${t.id}">${typeOpts}</select></div>
+        <div class="fg"><label>Edital</label><select id="ed-${t.id}"><option value="ok">✅ Edital</option><option value="ctx">⚠️ Contexto</option></select></div>
+        <div class="fg"><label>Páginas</label><input id="pg-${t.id}"></div>
+        <div class="fg"><label>Duração (min)</label><input id="du-${t.id}" placeholder="80-100"></div>
+        <div class="fg full"><label>Tópico</label><input id="tp-${t.id}"></div>
+        <div class="fg full"><label>📖 Comando</label><textarea id="cm-${t.id}"></textarea></div>
+        <div class="fg full"><label>⚖️ Lei Seca (Disp | Arts | Motivo — uma por linha)</label><textarea id="ls-${t.id}"></textarea></div>
+        <div class="fg full"><label>💡 Bizus (um por linha)</label><textarea id="bz-${t.id}"></textarea></div>
+        <div class="fg full"><label>✂️ Filtros (um por linha)</label><textarea id="fl-${t.id}"></textarea></div>
+        <div class="fg full"><label>🔑 Palavras-Chave (vírgula)</label><textarea id="kw-${t.id}"></textarea></div>
+      </div></div>`).join('');
+}
+function salvarManual(){
+  const discId=document.getElementById('f-disc').value,cod=document.getElementById('f-cod').value.trim(),tit=document.getElementById('f-tit').value.trim();
+  if(!discId||!cod||!tit){alert('Preencha disciplina, código e título.');return}
+  const d=S.disciplinas.find(x=>x.id===discId);if(!d)return;
+  const tarefas=tfForms.map((t,i)=>{
+    const durRaw=(document.getElementById('du-'+t.id).value||'75').split(/[-–]/);
+    const dMin=parseInt(durRaw[0])||75,dMax=parseInt(durRaw[1])||dMin+15;
+    const tipo=document.getElementById('ty-'+t.id).value||'TEORIA';
+    const lsRaw=document.getElementById('ls-'+t.id).value.trim();
+    const leiSeca=lsRaw?lsRaw.split('\n').filter(Boolean).map(l=>{const p=l.split('|').map(x=>x.trim());return{dispositivo:p[0]||'',artigos:p[1]||'',motivo:p[2]||''}}):[];
+    const bRaw=document.getElementById('bz-'+t.id).value.trim();
+    const fRaw=document.getElementById('fl-'+t.id).value.trim();
+    const kRaw=document.getElementById('kw-'+t.id).value.trim();
+    return{id:uid(),label:`Tarefa ${i+1}`,type:tipo,primaryType:tipo==='TEORIA_LEI'?'TEORIA':tipo,edital:document.getElementById('ed-'+t.id).value,paginas:document.getElementById('pg-'+t.id).value.trim()||'—',topico:document.getElementById('tp-'+t.id).value.trim()||`Tarefa ${i+1}`,descricao:'',comando:document.getElementById('cm-'+t.id).value.trim(),leiSeca,duracaoMin:dMin,duracaoMax:dMax,status:'pendente',bizus:bRaw?bRaw.split('\n').map(cleanMd).filter(Boolean):[],filtros:fRaw?fRaw.split('\n').map(cleanMd).filter(Boolean):[],keywords:kRaw?kRaw.split(',').map(cleanMd).filter(Boolean):[]};
+  });
+  d.aulas.push({id:uid(),codigo:cod,titulo:tit,tarefas});
+  saveState();
+  document.getElementById('f-cod').value='';document.getElementById('f-tit').value='';
+  initForm();goTab('disciplinas');renderAll();
+}
+
+function switchImp(mode,btn){
+  document.querySelectorAll('.imp-tab').forEach(b=>b.classList.remove('active'));
+  document.querySelectorAll('.imp-panel').forEach(p=>p.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('imp-'+mode).classList.add('active');
+  if(mode==='form')initForm();
+  populateDiscDropdowns();
+}
+function populateDiscDropdowns(){
+  const opts=S.disciplinas.map(d=>`<option value="${d.id}">${d.nome}</option>`).join('');
+  ['nlm-disc','f-disc'].forEach(id=>{const el=document.getElementById(id);if(el)el.innerHTML=opts});
+}
+
+function exportar(){
+  const blob=new Blob([JSON.stringify(S,null,2)],{type:'application/json'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);
+  a.download=`aprovado-backup-${new Date().toISOString().slice(0,10)}.json`;a.click();
+}
+function importarBackup(input){
+  const file=input.files[0];if(!file)return;
+  const reader=new FileReader();
+  reader.onload=e=>{
+    try{
+      const data=JSON.parse(e.target.result);
+      if(!data.disciplinas)throw new Error('Formato inválido');
+      if(confirm('Importar este backup? Os dados atuais serão substituídos.')){
+        S=data;
+        if(!S.config.lastModified)S.config.lastModified=Date.now();
+        saveState();renderAll();alert('Backup importado!');
+      }
+    }catch(err){alert('Arquivo inválido: '+err.message)}
+  };
+  reader.readAsText(file);input.value='';
+}
+
+function openSettings(){
+  document.getElementById('modal-settings').classList.add('open');
+  renderSettings();
+}
+function closeSettings(){document.getElementById('modal-settings').classList.remove('open')}
+
+function renderSettings(){
+  const hasToken=!!S.config.githubToken,hasGist=!!S.config.gistId;
+  let syncHtml='';
+  if(!hasToken){
+    syncHtml=`
+      <div class="alert-box alert-info">
+        <strong>Como criar o token:</strong><br>
+        1. Vá em <a href="https://github.com/settings/tokens" target="_blank" style="color:var(--bl)">github.com/settings/tokens</a><br>
+        2. Generate new token (classic)<br>
+        3. Escopo: marque apenas <code style="background:var(--s2);padding:1px 5px;border-radius:3px">gist</code><br>
+        4. Defina expiração (90 dias recomendado) e copie o token.
+      </div>
+      <div class="fg" style="margin-bottom:12px">
+        <label>GitHub Personal Access Token</label>
+        <input id="gh-token" type="password" placeholder="ghp_xxxxxxxxxxxxxxxxxxxx">
+      </div>
+      <button class="btn btn-p" onclick="conectarGitHub()">🔗 Conectar e criar Gist</button>
+      <div class="alert-box alert-warn" style="margin-top:12px;font-size:11px">
+        <strong>Já tem um Gist?</strong> Após conectar, você pode mudar para um Gist existente.
+      </div>`;
+  }else if(!hasGist){
+    syncHtml=`
+      <div class="alert-box alert-ok">Token conectado. Agora criamos o Gist:</div>
+      <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap">
+        <button class="btn btn-p" onclick="criarNovoGist()">📝 Criar novo Gist</button>
+        <button class="btn btn-g" onclick="usarGistExistente()">🔗 Usar Gist existente</button>
+      </div>
+      <button class="btn btn-s" style="margin-top:10px;color:var(--re)" onclick="desconectarGitHub()">Desconectar</button>`;
+  }else{
+    const tk=S.config.githubToken;
+    const masked='ghp_••••••••'+tk.slice(-4);
+    syncHtml=`
+      <div class="alert-box alert-ok">✓ Sincronizado com GitHub</div>
+      <div style="margin-bottom:8px">
+        <div style="font-size:11px;color:var(--mu);margin-bottom:4px">Token</div>
+        <div class="tk-display">${masked}</div>
+      </div>
+      <div style="margin-bottom:8px">
+        <div style="font-size:11px;color:var(--mu);margin-bottom:4px">Gist ID</div>
+        <div class="tk-display">
+          <a href="https://gist.github.com/${S.config.gistId}" target="_blank" style="color:var(--bl);text-decoration:none">${S.config.gistId} ↗</a>
+        </div>
+      </div>
+      <div class="sync-status-line">
+        <span class="sync-dot s-${syncState}"></span>
+        ${syncState==='synced'?'Última sincronização: '+fmtDateTime(S.config.lastSyncAt):syncState==='syncing'?'Sincronizando…':syncState==='error'?'Erro — clique abaixo para tentar novamente':'Aguardando mudança'}
+      </div>
+      <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">
+        <button class="btn btn-g" onclick="forcarPull()">↓ Puxar do Gist</button>
+        <button class="btn btn-g" onclick="forcarPush()">↑ Empurrar para Gist</button>
+        <button class="btn btn-s" style="color:var(--re)" onclick="desconectarGitHub()">Desconectar</button>
+      </div>`;
+  }
+  document.getElementById('syncSettings').innerHTML=syncHtml;
+  let wHtml='';
+  S.disciplinas.forEach(d=>{
+    wHtml+=`<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+      <span class="disc-color-dot" style="background:${d.cor}"></span>
+      <span style="flex:1;font-size:13px">${d.nome}</span>
+      <input type="number" value="${d.peso}" min="1" max="100" style="width:60px" onchange="updateDiscPeso('${d.id}',this.value)">
+      <span style="color:var(--mu);font-size:11px">%</span>
+    </div>`;
+  });
+  const total=S.disciplinas.reduce((s,d)=>s+d.peso,0);
+  wHtml+=`<div style="font-size:11px;color:${total===100?'var(--gr)':'var(--yl)'};margin-top:10px">Soma: ${total}% ${total!==100?'(ideal: 100%)':'✓'}</div>`;
+  document.getElementById('weightsSettings').innerHTML=wHtml;
+  document.getElementById('cfg-hd').value=S.config.horasPorDia;
+  document.getElementById('cfg-ds').value=S.config.diasPorSemana;
+}
+
+function updateDiscPeso(id,val){
+  const d=S.disciplinas.find(x=>x.id===id);if(!d)return;
+  d.peso=parseInt(val)||1;saveState();renderSettings();renderAll();
+}
+function updateConfig(){
+  S.config.horasPorDia=parseInt(document.getElementById('cfg-hd').value)||4;
+  S.config.diasPorSemana=parseInt(document.getElementById('cfg-ds').value)||6;
+  document.getElementById('pvHoras').value=S.config.horasPorDia;
+  document.getElementById('pvDias').value=S.config.diasPorSemana;
+  saveState();renderAll();
+}
+
+async function conectarGitHub(){
+  const tk=document.getElementById('gh-token').value.trim();
+  if(!tk){alert('Cole o token primeiro.');return}
+  try{
+    setSyncState('syncing');
+    await testToken(tk);
+    S.config.githubToken=tk;
+    saveLocal();
+    renderSettings();
+    setSyncState('unconfigured');
+  }catch(e){alert('Erro: '+e.message);setSyncState('error',e.message)}
+}
+async function criarNovoGist(){
+  if(!S.config.githubToken)return;
+  try{
+    setSyncState('syncing');
+    const id=await createGist();
+    S.config.gistId=id;
+    S.config.lastSyncAt=new Date().toISOString();
+    lastPushedJson=JSON.stringify(S);
+    saveLocal();
+    setSyncState('synced');
+    renderSettings();
+  }catch(e){alert('Erro: '+e.message);setSyncState('error',e.message)}
+}
+function usarGistExistente(){
+  const id=prompt('Cole o ID do Gist (a parte após gist.github.com/seu-usuario/):');
+  if(!id)return;
+  S.config.gistId=id.trim();
+  saveLocal();forcarPull();
+}
+async function forcarPull(){
+  if(!S.config.gistId)return;
+  try{
+    setSyncState('syncing');
+    const remote=await pullGist();
+    if(confirm('Substituir dados locais pelo conteúdo do Gist?')){
+      S=remote;
+      if(!S.config.lastModified)S.config.lastModified=Date.now();
+      lastPushedJson=JSON.stringify(S);
+      saveLocal();renderAll();
+    }
+    setSyncState('synced');
+    renderSettings();
+  }catch(e){alert('Erro: '+e.message);setSyncState('error',e.message)}
+}
+async function forcarPush(){
+  if(!S.config.gistId)return;
+  try{
+    setSyncState('syncing');
+    lastPushedJson='';
+    await pushGist();
+    setSyncState('synced');
+    renderSettings();
+  }catch(e){alert('Erro: '+e.message);setSyncState('error',e.message)}
+}
+function desconectarGitHub(){
+  if(!confirm('Desconectar do GitHub? Os dados locais ficam intactos.'))return;
+  S.config.githubToken='';S.config.gistId='';S.config.lastSyncAt=null;
+  saveLocal();setSyncState('unconfigured');renderSettings();
+}
+
+function goTab(name){
+  document.querySelectorAll('.tab').forEach(e=>e.classList.remove('active'));
+  document.querySelectorAll('nav button').forEach(e=>e.classList.remove('active'));
+  document.getElementById('tab-'+name).classList.add('active');
+  const idx=['hoje','meta','disciplinas','previsao','questoes','importar'].indexOf(name);
+  document.querySelectorAll('nav button')[idx]?.classList.add('active');
+  if(name==='importar'){populateDiscDropdowns();initForm()}
+  if(name==='meta')renderMeta();
+  if(name==='previsao')renderPrevisao();
+  if(name==='questoes')renderQuestoes();
+}
+
+async function init(){
+  renderAll();
+  if(S.config.githubToken && S.config.gistId){
+    setSyncState('syncing');
+    try{
+      const remote = await pullGist();
+      const remoteModified = remote.config?.lastModified || 0;
+      const localModified = S.config.lastModified || 0;
+      if(remoteModified > localModified){
+        S = remote;
+        if(!S.config.lastModified) S.config.lastModified = Date.now();
+        saveLocal();
+        renderAll();
+        lastPushedJson = JSON.stringify(S);
+      } else if(localModified > remoteModified){
+        await pushGist();
+      } else {
+        lastPushedJson = JSON.stringify(remote);
+      }
+      setSyncState('synced');
+    }catch(e){
+      console.error(e);
+      setSyncState('error', e.message);
+    }
+  } else if(S.config.githubToken){
+    setSyncState('unconfigured');
+  } else {
+    setSyncState('unconfigured');
+  }
+  isInitializing = false;
+}
+init();
+</script>
+</body>
+</html>
