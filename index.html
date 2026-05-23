@@ -90,6 +90,7 @@ main{max-width:900px;margin:0 auto;padding:26px 18px}
 .lt tr:last-child td{border-bottom:none}
 .bz{font-size:12px;line-height:1.5;color:var(--tx);background:rgba(245,166,35,.06);border-left:3px solid var(--amb);padding:6px 11px;margin-bottom:4px}
 .fl{font-size:12px;line-height:1.5;color:var(--tx);background:rgba(248,113,113,.07);border-left:3px solid var(--re);padding:6px 10px;margin-bottom:4px}
+.qf{font-size:12px;line-height:1.5;color:var(--tx);background:rgba(34,211,238,.07);border-left:3px solid var(--cy);padding:6px 11px;margin-bottom:4px}
 .kwl{display:flex;flex-wrap:wrap;gap:5px}
 .kw{font-size:10px;background:var(--s3);border:1px solid var(--bd);padding:2px 9px;border-radius:99px;color:var(--tx)}
 .dg{margin-bottom:26px}
@@ -648,9 +649,9 @@ function taskCard(t,withCheck){
   const hasCmd=t.comando&&t.comando.trim();
   const hasLei=t.leiSeca&&t.leiSeca.length;
   const hasBz=t.bizus&&t.bizus.length;
-  const hasFl=t.filtros&&t.filtros.length;
+  const hasQf=t.questoesFixacao&&t.questoesFixacao.length;
   const hasKw=t.keywords&&t.keywords.length;
-  const hasDet=hasCmd||hasLei||hasBz||hasFl||hasKw;
+  const hasDet=hasCmd||hasLei||hasBz||hasQf||hasKw;
   const edTag=t.edital==='ok'?`<span class="tag-ok">✅ Edital</span>`:t.edital==='ctx'?`<span class="tag-ctx">⚠️ Contexto</span>`:'';
   const leiRows=hasLei?t.leiSeca.map(l=>`<tr><td>${l.dispositivo}</td><td>${l.artigos}</td><td>${l.motivo}</td></tr>`).join(''):'';
   return`<div class="ti${done?' done':''}" onclick="toggleDet('${t.id}')">
@@ -672,8 +673,8 @@ function taskCard(t,withCheck){
     ${hasDet?`<div id="det-${t.id}" class="det">
       ${hasCmd?`<div class="db"><div class="dl">📖 Comando</div><div class="cmd">${t.comando}</div></div>`:''}
       ${hasLei?`<div class="db"><div class="dl">⚖️ Lei Seca</div><table class="lt"><thead><tr><th>Dispositivo</th><th>Artigos</th><th>Por que cai</th></tr></thead><tbody>${leiRows}</tbody></table></div>`:''}
+      ${hasQf?`<div class="db"><div class="dl">📝 Questões de Fixação</div>${t.questoesFixacao.map(q=>`<div class="qf">${q}</div>`).join('')}</div>`:''}
       ${hasBz?`<div class="db"><div class="dl">💡 Bizus</div>${t.bizus.map(b=>`<div class="bz">${b}</div>`).join('')}</div>`:''}
-      ${hasFl?`<div class="db"><div class="dl">✂️ Filtros</div>${t.filtros.map(f=>`<div class="fl">${f}</div>`).join('')}</div>`:''}
       ${hasKw?`<div class="db"><div class="dl">🔑 Palavras-Chave</div><div class="kwl">${t.keywords.map(k=>`<span class="kw">${k}</span>`).join('')}</div></div>`:''}
     </div>`:''}
   </div></div>`;
@@ -1105,14 +1106,16 @@ function renderQuestoes(){
 
 function parseNLM(text){
   const tasks=[];
-  const blocks=text.split(/(?=#{4,5}\s*TAREFA\s+\d+)/i).filter(b=>b.trim()&&/TAREFA\s+\d+/i.test(b));
+  // Suporta V1 (##### TAREFA) e V2 (TAREFA sem hashes) simultaneamente
+  const blocks=text.split(/(?=\n?#{0,5}\s*TAREFA\s+\d+\s*[—\-])/i).filter(b=>b.trim()&&/TAREFA\s+\d+/i.test(b));
   blocks.forEach((block,i)=>{
     const hm=block.match(/TAREFA\s+(\d+)\s*[—\-]+\s*([A-Z_]+)/i);
     const type=hm?hm[2].toUpperCase().trim():'TEORIA';
     const valid=['TEORIA','LEI_SECA','TEORIA_LEI','QUESTOES','REVISAO','MAPEAMENTO'];
     const finalType=valid.includes(type)?type:'TEORIA';
     const primType=finalType==='TEORIA_LEI'?'TEORIA':finalType;
-    const pagM=block.match(/\*{0,2}P[áa]ginas\*{0,2}:?\s*([\d]+[\s–\-]+[\d]+)/i);
+    // Aceita "**Páginas:**" (V1) e "Páginas da Teoria:" (V2)
+    const pagM=block.match(/(?:\*{0,2}P[áa]ginas(?:\s+da\s+Teoria)?\*{0,2}):?\s*([\d]+[\s–\-]+[\d]+)/i);
     const paginas=pagM?pagM[1].replace(/\s/g,'–'):'—';
     const durM=block.match(/dura[çc][ãa]o[^:]*:?\s*(\d+)\s*[–\-]\s*(\d+)/i);
     const durMin=durM?parseInt(durM[1]):75,durMax=durM?parseInt(durM[2]):90;
@@ -1120,8 +1123,9 @@ function parseNLM(text){
     const edital=edM?edM[1]==='✅'?'ok':'ctx':'ok';
     const topM=block.match(/\*{0,2}T[óo]pico\s+principal\*{0,2}:?\s*(.+)/i);
     const topico=topM?cleanMd(topM[1]):`Tarefa ${i+1}`;
+    // getSec: encontra seção por emoji — funciona com e sem hashes (V1 e V2)
     const getSec=(emoji)=>{
-      const re=new RegExp(`${emoji}[^\\n]*\\n([\\s\\S]*?)(?=\\n#{4,6}|$)`,'i');
+      const re=new RegExp(`(?:#{0,6}\\s*)?${emoji}[^\\n]*\\n([\\s\\S]*?)(?=\\n\\s*(?:#{0,6}\\s*)?(?:📖|⚖️|📝|💡|🔑|✂️)|\\n#{0,5}\\s*TAREFA\\s+\\d+|$)`,'i');
       const m=block.match(re);return m?m[1].trim():'';
     };
     const comando=getSec('📖').replace(/^#+\s*/gm,'').trim();
@@ -1135,14 +1139,15 @@ function parseNLM(text){
       }
     });
     const parseBullets=(sec)=>sec.split('\n').filter(l=>/^[•\-\*]/.test(l.trim())).map(l=>cleanMd(l.replace(/^[•\-\*]\s*/,''))).filter(Boolean);
-    const filtros=parseBullets(getSec('✂️'));
+    // 📝 Questões de Fixação (novo no V2)
+    const questoesFixacao=parseBullets(getSec('📝'));
     const bizus=parseBullets(getSec('💡'));
     const kwSec=getSec('🔑');
     let keywords=[];
     kwSec.split('\n').filter(l=>/^[•\-\*]/.test(l.trim())).map(l=>l.replace(/^[•\-\*]\s*/,'').trim()).forEach(b=>{
       keywords=keywords.concat(b.split(',').map(k=>cleanMd(k)).filter(Boolean));
     });
-    tasks.push({id:uid(),label:`Tarefa ${i+1}`,type:finalType,primaryType:primType,edital,paginas,topico,descricao:'',comando,leiSeca,duracaoMin:durMin,duracaoMax:durMax,status:'pendente',bizus,filtros,keywords});
+    tasks.push({id:uid(),label:`Tarefa ${i+1}`,type:finalType,primaryType:primType,edital,paginas,topico,descricao:'',comando,leiSeca,duracaoMin:durMin,duracaoMax:durMax,status:'pendente',bizus,filtros:[],keywords,questoesFixacao});
   });
   return tasks;
 }
@@ -1194,8 +1199,8 @@ function renderForms(){
         <div class="fg full"><label>Tópico</label><input id="tp-${t.id}"></div>
         <div class="fg full"><label>📖 Comando</label><textarea id="cm-${t.id}"></textarea></div>
         <div class="fg full"><label>⚖️ Lei Seca (Disp | Arts | Motivo — uma por linha)</label><textarea id="ls-${t.id}"></textarea></div>
+        <div class="fg full"><label>📝 Questões de Fixação (uma por linha — ex: Questões nº 01 a 07)</label><textarea id="qf-${t.id}" placeholder="Questões nº: 01 a 07 e Questão 12&#10;Localização no PDF: Páginas 81–95"></textarea></div>
         <div class="fg full"><label>💡 Bizus (um por linha)</label><textarea id="bz-${t.id}"></textarea></div>
-        <div class="fg full"><label>✂️ Filtros (um por linha)</label><textarea id="fl-${t.id}"></textarea></div>
         <div class="fg full"><label>🔑 Palavras-Chave (vírgula)</label><textarea id="kw-${t.id}"></textarea></div>
       </div></div>`).join('');
 }
@@ -1209,10 +1214,10 @@ function salvarManual(){
     const tipo=document.getElementById('ty-'+t.id).value||'TEORIA';
     const lsRaw=document.getElementById('ls-'+t.id).value.trim();
     const leiSeca=lsRaw?lsRaw.split('\n').filter(Boolean).map(l=>{const p=l.split('|').map(x=>x.trim());return{dispositivo:p[0]||'',artigos:p[1]||'',motivo:p[2]||''}}):[];
+    const qfRaw=document.getElementById('qf-'+t.id).value.trim();
     const bRaw=document.getElementById('bz-'+t.id).value.trim();
-    const fRaw=document.getElementById('fl-'+t.id).value.trim();
     const kRaw=document.getElementById('kw-'+t.id).value.trim();
-    return{id:uid(),label:`Tarefa ${i+1}`,type:tipo,primaryType:tipo==='TEORIA_LEI'?'TEORIA':tipo,edital:document.getElementById('ed-'+t.id).value,paginas:document.getElementById('pg-'+t.id).value.trim()||'—',topico:document.getElementById('tp-'+t.id).value.trim()||`Tarefa ${i+1}`,descricao:'',comando:document.getElementById('cm-'+t.id).value.trim(),leiSeca,duracaoMin:dMin,duracaoMax:dMax,status:'pendente',bizus:bRaw?bRaw.split('\n').map(cleanMd).filter(Boolean):[],filtros:fRaw?fRaw.split('\n').map(cleanMd).filter(Boolean):[],keywords:kRaw?kRaw.split(',').map(cleanMd).filter(Boolean):[]};
+    return{id:uid(),label:`Tarefa ${i+1}`,type:tipo,primaryType:tipo==='TEORIA_LEI'?'TEORIA':tipo,edital:document.getElementById('ed-'+t.id).value,paginas:document.getElementById('pg-'+t.id).value.trim()||'—',topico:document.getElementById('tp-'+t.id).value.trim()||`Tarefa ${i+1}`,descricao:'',comando:document.getElementById('cm-'+t.id).value.trim(),leiSeca,duracaoMin:dMin,duracaoMax:dMax,status:'pendente',bizus:bRaw?bRaw.split('\n').map(cleanMd).filter(Boolean):[],filtros:[],keywords:kRaw?kRaw.split(',').map(cleanMd).filter(Boolean):[],questoesFixacao:qfRaw?qfRaw.split('\n').map(l=>l.trim()).filter(Boolean):[]};
   });
   d.aulas.push({id:uid(),codigo:cod,titulo:tit,tarefas});
   saveState();
