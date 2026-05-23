@@ -1472,8 +1472,13 @@ async function forcarPull(){
     setSyncState('syncing');
     const remote=await pullGist();
     if(confirm('Substituir dados locais pelo conteúdo do Gist?')){
+      const localToken=S.config.githubToken;
+      const localGistId=S.config.gistId;
       S=remote;
+      S.config.githubToken=localToken;
+      S.config.gistId=localGistId;
       if(!S.config.lastModified)S.config.lastModified=Date.now();
+      if(!S.config.horasSemana)S.config.horasSemana=Array(7).fill(S.config.horasPorDia||4);
       lastPushedJson=JSON.stringify(S);
       saveLocal();renderAll();
     }
@@ -1517,9 +1522,15 @@ async function init(){
       const remote = await pullGist();
       const remoteModified = remote.config?.lastModified || 0;
       const localModified = S.config.lastModified || 0;
+      // Preserva sempre as credenciais locais — token e gistId nunca vêm do Gist
+      const localToken = S.config.githubToken;
+      const localGistId = S.config.gistId;
       if(remoteModified > localModified){
         S = remote;
+        S.config.githubToken = localToken;
+        S.config.gistId = localGistId;
         if(!S.config.lastModified) S.config.lastModified = Date.now();
+        if(!S.config.horasSemana) S.config.horasSemana = Array(7).fill(S.config.horasPorDia||4);
         saveLocal();
         renderAll();
         lastPushedJson = JSON.stringify(S);
@@ -1533,8 +1544,6 @@ async function init(){
       console.error(e);
       setSyncState('error', e.message);
     }
-  } else if(S.config.githubToken){
-    setSyncState('unconfigured');
   } else {
     setSyncState('unconfigured');
   }
