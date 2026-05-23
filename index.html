@@ -544,10 +544,9 @@ async function testToken(token){
 }
 
 async function createGist(){
-  // Cria uma cópia dos dados e apaga o token antes de enviar para o GitHub
   const safeData = JSON.parse(JSON.stringify(S));
   safeData.config.githubToken = ''; 
-  
+
   const data = await ghFetch('/gists', {
     method:'POST',
     body: JSON.stringify({
@@ -559,29 +558,22 @@ async function createGist(){
   return data.id;
 }
 
+async function pullGist(){
+  const data = await ghFetch('/gists/' + S.config.gistId);
+  const f = data.files['aprovado-data.json'];
+  if(!f || !f.content) throw new Error('Arquivo não encontrado no Gist');
+  return JSON.parse(f.content);
+}
+
 async function pushGist(){
   if(!S.config.githubToken || !S.config.gistId) return;
   
-  // Cria uma cópia dos dados e apaga o token antes de enviar para o GitHub
   const safeData = JSON.parse(JSON.stringify(S));
   safeData.config.githubToken = ''; 
   const content = JSON.stringify(safeData, null, 2);
   
   if(content === lastPushedJson) return;
   
-  await ghFetch('/gists/' + S.config.gistId, {
-    method:'PATCH',
-    body: JSON.stringify({files:{'aprovado-data.json':{content}}})
-  });
-  lastPushedJson = content;
-  S.config.lastSyncAt = new Date().toISOString();
-  saveLocal();
-}
-
-async function pushGist(){
-  if(!S.config.githubToken || !S.config.gistId) return;
-  const content = JSON.stringify(S, null, 2);
-  if(content === lastPushedJson) return;
   await ghFetch('/gists/' + S.config.gistId, {
     method:'PATCH',
     body: JSON.stringify({files:{'aprovado-data.json':{content}}})
