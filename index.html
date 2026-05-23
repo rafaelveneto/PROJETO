@@ -119,6 +119,15 @@ main{max-width:900px;margin:0 auto;padding:26px 18px}
 .da-bar{height:3px;background:var(--s3);overflow:hidden}
 .da-tasks{padding:0 18px 14px;display:none}
 .da-tasks.open{display:block}
+.day-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;margin-bottom:12px}
+.day-cell{text-align:center}
+.day-nm{font-size:9px;font-weight:700;color:var(--mu);text-transform:uppercase;letter-spacing:.04em;margin-bottom:5px}
+.day-nm.hj{color:var(--amb)}
+.day-hi{background:var(--s2);border:1px solid var(--bd);border-radius:6px;color:var(--tx);font-family:'JetBrains Mono',monospace;font-size:16px;font-weight:600;width:100%;padding:8px 4px;outline:none;text-align:center;transition:border-color .2s}
+.day-hi:focus{border-color:var(--amb)}
+.day-hi.hj{border-color:var(--amb-b);background:var(--amb-g)}
+.day-total{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--mu);text-align:right;margin-top:4px}
+.disc-add-form{background:var(--s3);border:1px dashed var(--bd);border-radius:8px;padding:12px;margin-top:12px}
 .pv-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px}
 .pv-card{background:var(--s1);border:1px solid var(--bd);border-radius:var(--r);padding:16px;text-align:center}
 .pv-val{font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:600;display:block;margin-bottom:2px}
@@ -251,8 +260,9 @@ select option{background:var(--s2)}
   <div class="sh">
     <div class="stit">Meta da Semana</div>
     <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-      <span class="meta-label">Horas disponíveis nesta semana:</span>
+      <span class="meta-label">Horas disponíveis:</span>
       <input type="number" id="metaHoras" class="hrs-input" value="24" min="1" max="80">
+      <button class="btn btn-g" onclick="usarAgenda()" title="Preencher com total da sua agenda semanal">📅 Agenda</button>
       <button class="btn btn-p" onclick="renderMeta()">Gerar plano ↻</button>
     </div>
   </div>
@@ -370,17 +380,12 @@ select option{background:var(--s2)}
       <div id="syncSettings"></div>
     </div>
     <div class="modal-section">
-      <div class="modal-section-title">⚖ Pesos das Disciplinas</div>
+      <div class="modal-section-title">⚖ Disciplinas e Pesos</div>
       <div id="weightsSettings"></div>
     </div>
     <div class="modal-section">
-      <div class="modal-section-title">⏱ Configuração de Estudo</div>
-      <div class="fg2">
-        <div class="fg"><label>Horas por dia (padrão)</label>
-          <input type="number" id="cfg-hd" min="1" max="12" oninput="updateConfig()"></div>
-        <div class="fg"><label>Dias por semana</label>
-          <input type="number" id="cfg-ds" min="1" max="7" oninput="updateConfig()"></div>
-      </div>
+      <div class="modal-section-title">📅 Horas disponíveis por dia</div>
+      <div id="scheduleSettings"></div>
     </div>
   </div>
 </div>
@@ -397,7 +402,7 @@ const TYPES = {
 
 const TODAY_ISO = new Date().toISOString().split('T')[0];
 const SEED = {
-  config:{horasPorDia:4, diasPorSemana:6, dataInicio:TODAY_ISO, githubToken:'', gistId:'', lastModified:Date.now(), lastSyncAt:null},
+  config:{horasPorDia:4, diasPorSemana:6, horasSemana:[0,4,4,4,4,4,2], dataInicio:TODAY_ISO, githubToken:'', gistId:'', lastModified:Date.now(), lastSyncAt:null},
   disciplinas:[
     {id:'port', nome:'Língua Portuguesa',         peso:34, cor:'#3266ad', aulas:[]},
     {id:'regi', nome:'Regimento Interno + Comum', peso:29, cor:'#1D9E75', aulas:[
@@ -598,6 +603,7 @@ if(typeof S.config.githubToken === 'undefined') S.config.githubToken = '';
 if(typeof S.config.gistId === 'undefined') S.config.gistId = '';
 if(typeof S.config.lastModified === 'undefined') S.config.lastModified = Date.now();
 if(typeof S.questoes === 'undefined') S.questoes = null;
+if(!S.config.horasSemana) S.config.horasSemana = Array(7).fill(S.config.horasPorDia||4);
 
 const uid = ()=>Math.random().toString(36).slice(2,9);
 function fmtMin(m){if(m<60)return m+'min';const h=Math.floor(m/60),r=m%60;return r?`${h}h ${r}min`:`${h}h`}
@@ -704,9 +710,17 @@ function renderHoje(){
     const cfg=TYPES[k],{total:t,done:d}=ts[k];
     return`<div class="tc"><div class="td" style="background:${cfg.dot}"></div><div><div class="tn">${cfg.label}</div><div class="tv">${d}/${t}</div></div></div>`;
   }).join('');
-  const budget=S.config.horasPorDia*60;
+  const hs=S.config.horasSemana||Array(7).fill(S.config.horasPorDia||4);
+  const todayH=hs[new Date().getDay()]||0;
+  const budget=todayH*60;
   const pend=pendingTarefas();
   let used=0,hoje=[];
+  if(budget===0){
+    document.getElementById('hojeBar').innerHTML=`<div class="alert-box alert-warn" style="margin-bottom:0">🌿 Dia de descanso — nenhuma hora agendada para hoje. Aproveite!</div>`;
+    document.getElementById('hojeList').innerHTML='';
+    document.getElementById('cardProx').style.display='none';
+    return;
+  }
   for(const t of pend){
     if(used+t.duracaoMin<=budget+15){hoje.push(t);used+=t.duracaoMin;if(used>=budget)break}
     else{if(hoje.length===0){hoje.push(t);used+=t.duracaoMin}break}
@@ -1282,10 +1296,7 @@ function renderSettings(){
         <label>GitHub Personal Access Token</label>
         <input id="gh-token" type="password" placeholder="ghp_xxxxxxxxxxxxxxxxxxxx">
       </div>
-      <button class="btn btn-p" onclick="conectarGitHub()">🔗 Conectar e criar Gist</button>
-      <div class="alert-box alert-warn" style="margin-top:12px;font-size:11px">
-        <strong>Já tem um Gist?</strong> Após conectar, você pode mudar para um Gist existente.
-      </div>`;
+      <button class="btn btn-p" onclick="conectarGitHub()">🔗 Conectar e criar Gist</button>`;
   }else if(!hasGist){
     syncHtml=`
       <div class="alert-box alert-ok">Token conectado. Agora criamos o Gist:</div>
@@ -1320,34 +1331,110 @@ function renderSettings(){
       </div>`;
   }
   document.getElementById('syncSettings').innerHTML=syncHtml;
+
+  // ── DISCIPLINAS E PESOS ──
   let wHtml='';
+  const pesoTotal=S.disciplinas.reduce((s,d)=>s+d.peso,0);
   S.disciplinas.forEach(d=>{
-    wHtml+=`<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
-      <span class="disc-color-dot" style="background:${d.cor}"></span>
-      <span style="flex:1;font-size:13px">${d.nome}</span>
-      <input type="number" value="${d.peso}" min="1" max="100" style="width:60px" onchange="updateDiscPeso('${d.id}',this.value)">
+    const hasAulas=d.aulas.length>0;
+    wHtml+=`<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+      <input type="color" value="${d.cor}" style="width:26px;height:26px;border:1px solid var(--bd);border-radius:4px;padding:1px;background:var(--s2);cursor:pointer;flex-shrink:0"
+             onchange="updateDiscCor('${d.id}',this.value)">
+      <span style="flex:1;font-size:13px;color:var(--tx)">${d.nome}</span>
+      <input type="number" value="${d.peso}" min="1" max="100" style="width:58px;text-align:center;font-family:'JetBrains Mono',monospace"
+             onchange="updateDiscPeso('${d.id}',this.value)">
       <span style="color:var(--mu);font-size:11px">%</span>
+      <button class="btnx" style="font-size:10px;padding:2px 7px" onclick="removerDisciplina('${d.id}')" title="${hasAulas?'Tem aulas':'Remover'}">🗑</button>
     </div>`;
   });
-  const total=S.disciplinas.reduce((s,d)=>s+d.peso,0);
-  wHtml+=`<div style="font-size:11px;color:${total===100?'var(--gr)':'var(--yl)'};margin-top:10px">Soma: ${total}% ${total!==100?'(ideal: 100%)':'✓'}</div>`;
+  wHtml+=`<div style="font-size:11px;color:${pesoTotal===100?'var(--gr)':'var(--yl)'};margin-bottom:14px">Soma: ${pesoTotal}% ${pesoTotal!==100?'— ideal 100%':'✓'}</div>`;
+  // Formulário para adicionar nova disciplina
+  const coresPre=['#3266ad','#1D9E75','#7F77DD','#D85A30','#BA7517','#ec4899','#06b6d4','#84cc16','#a855f7','#f97316'];
+  wHtml+=`<div class="disc-add-form">
+    <div style="font-size:10px;font-weight:700;color:var(--mu);text-transform:uppercase;letter-spacing:.1em;margin-bottom:10px">➕ Nova Disciplina</div>
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+      <input id="new-disc-nome" placeholder="Nome da disciplina" style="flex:1;min-width:140px">
+      <input type="color" id="new-disc-cor" value="${coresPre[S.disciplinas.length%coresPre.length]}"
+             style="width:32px;height:32px;border:1px solid var(--bd);border-radius:4px;padding:1px;background:var(--s2);cursor:pointer">
+      <input type="number" id="new-disc-peso" value="10" min="1" max="100" style="width:60px;text-align:center;font-family:'JetBrains Mono',monospace" placeholder="%">
+      <span style="font-size:11px;color:var(--mu)">%</span>
+      <button class="btn btn-p" style="font-size:11px;padding:7px 14px" onclick="adicionarDisciplina()">Adicionar</button>
+    </div>
+  </div>`;
   document.getElementById('weightsSettings').innerHTML=wHtml;
-  document.getElementById('cfg-hd').value=S.config.horasPorDia;
-  document.getElementById('cfg-ds').value=S.config.diasPorSemana;
+
+  // ── HORAS POR DIA DA SEMANA ──
+  const hs=S.config.horasSemana||Array(7).fill(4);
+  const nomes=['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
+  const hoje=new Date().getDay();
+  const totalSem=hs.reduce((s,h)=>s+h,0);
+  let sHtml=`<div class="day-grid">`;
+  nomes.forEach((n,i)=>{
+    const isHoje=i===hoje;
+    sHtml+=`<div class="day-cell">
+      <div class="day-nm${isHoje?' hj':''}">${n}${isHoje?' ●':''}</div>
+      <input type="number" class="day-hi${isHoje?' hj':''}" value="${hs[i]}" min="0" max="12"
+             oninput="updateHoraDia(${i},this.value)">
+    </div>`;
+  });
+  sHtml+=`</div>
+    <div class="day-total">Total da semana: <span style="color:var(--amb)">${totalSem}h</span> · Hoje: <span style="color:var(--amb)">${hs[hoje]}h</span></div>`;
+  document.getElementById('scheduleSettings').innerHTML=sHtml;
+}
+
+// Atualiza horas de um dia específico (0=Dom, 1=Seg ... 6=Sáb)
+function updateHoraDia(idx,val){
+  if(!S.config.horasSemana) S.config.horasSemana=Array(7).fill(4);
+  S.config.horasSemana[idx]=Math.max(0,parseInt(val)||0);
+  saveState();
+  // Atualiza só o total e o título — evita rerender completo enquanto o usuário digita
+  const totalSem=S.config.horasSemana.reduce((s,h)=>s+h,0);
+  const hoje=new Date().getDay();
+  const el=document.querySelector('.day-total');
+  if(el) el.innerHTML=`Total da semana: <span style="color:var(--amb)">${totalSem}h</span> · Hoje: <span style="color:var(--amb)">${S.config.horasSemana[hoje]}h</span>`;
+  if(idx===hoje) renderHoje();
+}
+
+// Atualiza cor da disciplina
+function updateDiscCor(id,cor){
+  const d=S.disciplinas.find(x=>x.id===id);if(!d)return;
+  d.cor=cor;saveState();renderAll();
+}
+
+// Adiciona nova disciplina
+function adicionarDisciplina(){
+  const nome=document.getElementById('new-disc-nome').value.trim();
+  const cor=document.getElementById('new-disc-cor').value;
+  const peso=parseInt(document.getElementById('new-disc-peso').value)||10;
+  if(!nome){alert('Informe o nome da disciplina.');return}
+  if(S.disciplinas.find(d=>d.nome.toLowerCase()===nome.toLowerCase())){alert('Já existe uma disciplina com este nome.');return}
+  S.disciplinas.push({id:uid(),nome,cor,peso,aulas:[]});
+  saveState();renderSettings();renderAll();
+}
+
+// Remove disciplina com confirmação (dupla se tiver aulas)
+function removerDisciplina(id){
+  const d=S.disciplinas.find(x=>x.id===id);if(!d)return;
+  const msg=d.aulas.length>0
+    ?`"${d.nome}" tem ${d.aulas.length} aula(s) cadastrada(s). Remover disciplina e todas as aulas?`
+    :`Remover a disciplina "${d.nome}"?`;
+  if(!confirm(msg))return;
+  if(d.aulas.length>0&&!confirm('Confirme: todos os dados desta disciplina serão apagados permanentemente.'))return;
+  S.disciplinas=S.disciplinas.filter(x=>x.id!==id);
+  saveState();renderSettings();renderAll();
+}
+
+// Preenche o input de horas da Meta com o total da agenda semanal
+function usarAgenda(){
+  const total=(S.config.horasSemana||[]).reduce((s,h)=>s+h,0);
+  document.getElementById('metaHoras').value=total||24;
+  renderMeta();
 }
 
 function updateDiscPeso(id,val){
   const d=S.disciplinas.find(x=>x.id===id);if(!d)return;
   d.peso=parseInt(val)||1;saveState();renderSettings();renderAll();
 }
-function updateConfig(){
-  S.config.horasPorDia=parseInt(document.getElementById('cfg-hd').value)||4;
-  S.config.diasPorSemana=parseInt(document.getElementById('cfg-ds').value)||6;
-  document.getElementById('pvHoras').value=S.config.horasPorDia;
-  document.getElementById('pvDias').value=S.config.diasPorSemana;
-  saveState();renderAll();
-}
-
 async function conectarGitHub(){
   const tk=document.getElementById('gh-token').value.trim();
   if(!tk){alert('Cole o token primeiro.');return}
