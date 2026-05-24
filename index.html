@@ -5,13 +5,11 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>APROVADO · Tracker Multi-usuário</title>
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;700;800&family=JetBrains+Mono:wght@400;600&family=DM+Sans:wght@400;500&display=swap" rel="stylesheet">
-
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore-compat.js"></script>
-
 <style>
 :root{
   --bg:#0c0f14;--s1:#13181f;--s2:#1a2030;--s3:#212b3a;--bd:#2a3547;
@@ -21,6 +19,30 @@
 }
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 body{background:var(--bg);color:var(--tx);font-family:'DM Sans',sans-serif;min-height:100vh}
+
+/* ── LOGIN SCREEN ── */
+@keyframes fadeUp{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:translateY(0)}}
+@keyframes orb1{0%,100%{transform:translate(0,0) scale(1)}50%{transform:translate(30px,-20px) scale(1.08)}}
+@keyframes orb2{0%,100%{transform:translate(0,0) scale(1)}50%{transform:translate(-20px,30px) scale(1.05)}}
+.login-screen{position:fixed;top:0;left:0;right:0;bottom:0;background:#080b10;z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px;overflow:hidden}
+.login-screen.hidden{display:none}
+.login-orb{position:absolute;border-radius:50%;filter:blur(80px);pointer-events:none;opacity:.35}
+.login-orb-1{width:420px;height:420px;background:radial-gradient(circle,#f5a62344,transparent 70%);top:-80px;right:-60px;animation:orb1 12s ease-in-out infinite}
+.login-orb-2{width:320px;height:320px;background:radial-gradient(circle,#60a5fa22,transparent 70%);bottom:-60px;left:-40px;animation:orb2 15s ease-in-out infinite}
+.login-grid{position:absolute;inset:0;background-image:linear-gradient(rgba(245,166,35,.04) 1px,transparent 1px),linear-gradient(90deg,rgba(245,166,35,.04) 1px,transparent 1px);background-size:48px 48px;mask-image:radial-gradient(ellipse 80% 80% at 50% 50%,black 40%,transparent 100%)}
+.login-box{position:relative;background:rgba(19,24,31,.85);border:1px solid rgba(245,166,35,.15);border-radius:20px;padding:52px 44px 44px;text-align:center;max-width:400px;width:100%;backdrop-filter:blur(20px);animation:fadeUp .6s cubic-bezier(.16,1,.3,1) both}
+.login-eyebrow{font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:600;letter-spacing:.18em;color:var(--amb);text-transform:uppercase;margin-bottom:16px;opacity:.8}
+.login-logo{font-family:'Syne',sans-serif;font-weight:800;font-size:32px;letter-spacing:.04em;color:#fff;margin-bottom:8px;line-height:1}
+.login-logo span{color:var(--amb)}
+.login-tagline{font-size:13px;color:#5a6a80;margin-bottom:40px;line-height:1.6;font-weight:400}
+.login-btn{display:flex;align-items:center;justify-content:center;gap:10px;background:#fff;color:#1a1a1a;border:none;border-radius:10px;padding:14px 20px;font-size:14px;font-weight:600;cursor:pointer;width:100%;transition:transform .15s,box-shadow .2s;font-family:'DM Sans',sans-serif;letter-spacing:.01em}
+.login-btn:hover{transform:translateY(-1px);box-shadow:0 8px 32px rgba(0,0,0,.5)}
+.login-btn:active{transform:translateY(0)}
+.login-sep{display:flex;align-items:center;gap:12px;margin:20px 0;color:#2a3547;font-size:11px}
+.login-sep::before,.login-sep::after{content:'';flex:1;height:1px;background:#1e2838}
+.login-footer{font-size:11px;color:#37475a;line-height:1.7}
+.login-error{margin-top:14px;font-size:12px;color:var(--re);min-height:18px}
+
 .ty-TEORIA{color:#60a5fa;background:rgba(96,165,250,.1);border-color:rgba(96,165,250,.3)}
 .ty-LEI_SECA{color:#4ade80;background:rgba(74,222,128,.1);border-color:rgba(74,222,128,.3)}
 .ty-TEORIA_LEI{color:#c084fc;background:rgba(192,132,252,.1);border-color:rgba(192,132,252,.3)}
@@ -227,27 +249,46 @@ select option{background:var(--s2)}
   .q-disc-head .q-bar{display:none}
   .q-topic{grid-template-columns:1fr 50px 40px}
   .q-topic > :nth-child(3){display:none}
+  .login-box{padding:36px 24px}
 }
 </style>
 </head>
 <body>
 
+<!-- ══ TELA DE LOGIN ══ -->
+<div class="login-screen" id="loginScreen">
+  <div class="login-orb login-orb-1"></div>
+  <div class="login-orb login-orb-2"></div>
+  <div class="login-grid"></div>
+  <div class="login-box">
+    <div class="login-eyebrow">Concurso Câmara dos Deputados</div>
+    <div class="login-logo">Tracker<span>.</span></div>
+    <div class="login-tagline">Seu ambiente de estudos integrado.<br>Planeje, acompanhe e chegue aprovado.</div>
+    <button class="login-btn" onclick="loginFirebase()">
+      <svg width="18" height="18" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.31-8.16 2.31-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>
+      Continuar com Google
+    </button>
+    <div class="login-error" id="loginError"></div>
+    <div class="login-sep">acesso seguro</div>
+    <div class="login-footer">Dados sincronizados na nuvem · Cada conta é isolada e privada</div>
+  </div>
+</div>
+
 <script>
   const firebaseConfig = {
-  apiKey: "AIzaSyCdjd_0Ubn1d7JFfAOX5lNjghsdMetp3vU",
-  authDomain: "aprovado-tracker.firebaseapp.com",
-  projectId: "aprovado-tracker",
-  storageBucket: "aprovado-tracker.firebasestorage.app",
-  messagingSenderId: "457948327236",
-  appId: "1:457948327236:web:7b04a9f70361807f3bbb11"
-};
-
-  // Inicializa o Firebase
+    apiKey: "AIzaSyCdjd_0Ubn1d7JFfAOX5lNjghsdMetp3vU",
+    authDomain: "aprovado-tracker.firebaseapp.com",
+    projectId: "aprovado-tracker",
+    storageBucket: "aprovado-tracker.firebasestorage.app",
+    messagingSenderId: "457948327236",
+    appId: "1:457948327236:web:7b04a9f70361807f3bbb11"
+  };
   firebase.initializeApp(firebaseConfig);
   const auth = firebase.auth();
   const db = firebase.firestore();
 </script>
-<header>
+
+<header id="appHeader" style="display:none">
   <div class="logo">APROVADO<span>·Tracker</span></div>
   <div class="sync-ind" id="syncInd" onclick="openSettings()" title="Configurar sincronização">
     <span class="sync-dot s-unconfigured" id="syncDot"></span>
@@ -265,7 +306,7 @@ select option{background:var(--s2)}
   <button class="gear-btn" onclick="openSettings()" title="Configurações">⚙</button>
 </header>
 
-<main>
+<main id="appMain" style="display:none">
 
 <div id="tab-hoje" class="tab active">
   <div id="saudBlock"></div>
@@ -326,6 +367,7 @@ select option{background:var(--s2)}
 <div id="tab-questoes" class="tab">
   <div class="sh" style="margin-bottom:10px">
     <div class="stit">Dashboard de Questões</div>
+    <span id="qInfoLabel" style="font-size:11px;color:var(--mu)"></span>
   </div>
   <div class="q-filter-bar">
     <span class="meta-label">Período de Análise:</span>
@@ -335,7 +377,6 @@ select option{background:var(--s2)}
       <option value="180">Últimos 6 meses</option>
       <option value="all" selected>Todo o Histórico</option>
     </select>
-    
     <span class="meta-label" style="margin-left:14px">Mín. de questões:</span>
     <input type="number" id="qMinQ" value="1" min="0" max="500" class="hrs-input" style="width:60px;font-size:14px" oninput="qMinQ=parseInt(this.value)||0;renderQuestoes()">
     <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--mu);cursor:pointer;margin-left:6px">
@@ -418,7 +459,7 @@ select option{background:var(--s2)}
   <div class="modal">
     <button class="modal-close" onclick="closeSettings()">✕</button>
     <h3>Configurações</h3>
-    <div class="sub">Faça login com sua conta para acessar seu ambiente de estudos.</div>
+    <div class="sub">Gerencie sua conta e preferências de estudo.</div>
     <div class="modal-section">
       <div class="modal-section-title">👤 Conta e Sincronização</div>
       <div id="syncSettings"></div>
@@ -462,7 +503,7 @@ let syncState = 'unconfigured';
 let syncTimer = null;
 let isInitializing = true;
 let qChartInstance = null;
-let currentUser = null; // Variável global para o Firebase Auth
+let currentUser = null;
 
 function loadLocal(){
   try{const r=localStorage.getItem('aprovado-v5');return r?JSON.parse(r):null}catch{return null}
@@ -484,28 +525,35 @@ function setSyncState(state, msg){
   text.textContent = labels[state] || state;
 }
 
-// -----------------------------------------------------
-// FUNÇÕES DO FIREBASE (Substituíram as do GitHub)
-// -----------------------------------------------------
+function showApp(){
+  document.getElementById('loginScreen').classList.add('hidden');
+  document.getElementById('appHeader').style.display='flex';
+  document.getElementById('appMain').style.display='block';
+}
+function showLogin(errorMsg){
+  document.getElementById('appHeader').style.display='none';
+  document.getElementById('appMain').style.display='none';
+  document.getElementById('loginScreen').classList.remove('hidden');
+  if(errorMsg) document.getElementById('loginError').textContent = errorMsg;
+  else document.getElementById('loginError').textContent = '';
+}
+
 async function loginFirebase() {
-  if (firebaseConfig.apiKey === "COLE_AQUI_A_SUA_API_KEY") {
-    alert("ERRO: Você precisa colar as chaves do Firebase no código-fonte primeiro!");
-    return;
-  }
+  document.getElementById('loginError').textContent = '';
   const provider = new firebase.auth.GoogleAuthProvider();
   try {
     await auth.signInWithPopup(provider);
   } catch(e) {
-    alert('Erro no login: ' + e.message);
+    document.getElementById('loginError').textContent = 'Erro no login: ' + e.message;
   }
 }
 
 async function logoutFirebase() {
   if(confirm("Deseja sair da sua conta?")) {
     await auth.signOut();
-    S = JSON.parse(JSON.stringify(SEED)); // Limpa a tela por segurança
+    S = JSON.parse(JSON.stringify(SEED));
     saveLocal();
-    renderAll();
+    showLogin();
   }
 }
 
@@ -515,28 +563,24 @@ async function pullFirebase(force = false) {
     setSyncState('syncing');
     const docRef = db.collection('usuarios').doc(currentUser.uid);
     const docSnap = await docRef.get();
-    
     if (docSnap.exists) {
       const remote = docSnap.data();
       const remoteModified = remote.config?.lastModified || 0;
       const localModified = S.config?.lastModified || 0;
-      
       if (force || remoteModified > localModified) {
         S = remote;
         if(!S.config.lastModified) S.config.lastModified = Date.now();
         if(!S.config.horasSemana) S.config.horasSemana = Array(7).fill(S.config.horasPorDia||4);
         if(!S.questoes_history) S.questoes_history = [];
-        
         saveLocal();
         renderAll();
         if(force) alert("Dados puxados da nuvem com sucesso!");
       }
     } else {
-      // Primeiro login deste usuário, vamos salvar os dados base na nuvem
       await pushFirebase();
     }
     setSyncState('synced');
-    renderSettings(); // Atualiza o modal se estiver aberto
+    renderSettings();
   } catch(e) {
     setSyncState('error', 'Erro ao puxar dados: ' + e.message);
   }
@@ -547,61 +591,42 @@ async function pushFirebase(force = false) {
   try {
     setSyncState('syncing');
     const docRef = db.collection('usuarios').doc(currentUser.uid);
-    
-    // Limpamos sujeiras legadas do GitHub se existirem no objeto S antigo
     const safeData = JSON.parse(JSON.stringify(S));
     if(safeData.config.githubToken !== undefined) delete safeData.config.githubToken;
     if(safeData.config.gistId !== undefined) delete safeData.config.gistId;
-
     await docRef.set(safeData);
-    
     S.config.lastSyncAt = new Date().toISOString();
     saveLocal();
     setSyncState('synced');
-    if(force) {
-      alert("Dados enviados para a nuvem com sucesso!");
-      renderSettings();
-    }
+    if(force) { alert("Dados enviados para a nuvem com sucesso!"); renderSettings(); }
   } catch(e) {
     setSyncState('error', 'Erro ao enviar: ' + e.message);
   }
 }
 
-// -----------------------------------------------------
-
 function scheduleSync(){
-  if(!currentUser) return; // Só tenta sincronizar se estiver logado
+  if(!currentUser) return;
   if(isInitializing) return;
   setSyncState('syncing');
   if(syncTimer) clearTimeout(syncTimer);
   syncTimer = setTimeout(async ()=>{
-    try{
-      await pushFirebase();
-    }catch(e){
-      console.error(e);
-      setSyncState('error', e.message);
-    }
+    try{ await pushFirebase(); }catch(e){ console.error(e); setSyncState('error', e.message); }
   }, 2500);
 }
 
 function saveState(){
   S.config.lastModified = Date.now();
   saveLocal();
-  scheduleSync(); // Aciona o Firebase em vez do GitHub
+  scheduleSync();
 }
 
 S = loadLocal() || JSON.parse(JSON.stringify(SEED));
 if(!S.config) S.config = JSON.parse(JSON.stringify(SEED.config));
 if(typeof S.config.lastModified === 'undefined') S.config.lastModified = Date.now();
 if(!S.config.horasSemana) S.config.horasSemana = Array(7).fill(S.config.horasPorDia||4);
-
-// MIGRACÃO AUTOMÁTICA DE DADOS: de S.questoes (antigo) para S.questoes_history (novo array)
 if(typeof S.questoes_history === 'undefined') {
   S.questoes_history = [];
-  if(S.questoes) {
-    S.questoes_history.push(S.questoes);
-    delete S.questoes;
-  }
+  if(S.questoes) { S.questoes_history.push(S.questoes); delete S.questoes; }
 }
 
 const uid = ()=>Math.random().toString(36).slice(2,9);
@@ -615,37 +640,14 @@ function cleanMd(s){return s.replace(/\*\*/g,'').replace(/\*/g,'').replace(/^Biz
 function accColor(pct){if(pct>=75)return'var(--gr)';if(pct>=60)return'var(--yl)';return'var(--re)'}
 function accClass(pct){if(pct>=75)return'high';if(pct>=60)return'mid';return'low'}
 
-function allTarefas(){
-  return S.disciplinas.flatMap(d=>d.aulas.flatMap(a=>a.tarefas.map(t=>({...t,discId:d.id,discNome:d.nome,discCor:d.cor,aulaId:a.id,aulaCod:a.codigo,aulaTit:a.titulo}))));
-}
+function allTarefas(){return S.disciplinas.flatMap(d=>d.aulas.flatMap(a=>a.tarefas.map(t=>({...t,discId:d.id,discNome:d.nome,discCor:d.cor,aulaId:a.id,aulaCod:a.codigo,aulaTit:a.titulo}))))}
 function pendingTarefas(){return allTarefas().filter(t=>t.status==='pendente')}
-function getPendingForDisc(discId){
-  const d=S.disciplinas.find(x=>x.id===discId);if(!d)return[];
-  return d.aulas.flatMap(a=>a.tarefas.filter(t=>t.status==='pendente').map(t=>({...t,discId:d.id,discNome:d.nome,discCor:d.cor,aulaId:a.id,aulaCod:a.codigo,aulaTit:a.titulo})));
-}
+function getPendingForDisc(discId){const d=S.disciplinas.find(x=>x.id===discId);if(!d)return[];return d.aulas.flatMap(a=>a.tarefas.filter(t=>t.status==='pendente').map(t=>({...t,discId:d.id,discNome:d.nome,discCor:d.cor,aulaId:a.id,aulaCod:a.codigo,aulaTit:a.titulo})))}
 function getPendingMinsForDisc(id){return getPendingForDisc(id).reduce((s,t)=>s+t.duracaoMin,0)}
-function getTotalMinsForDisc(id){
-  const d=S.disciplinas.find(x=>x.id===id);if(!d)return 0;
-  return d.aulas.flatMap(a=>a.tarefas).reduce((s,t)=>s+t.duracaoMin,0);
-}
-function stats(){
-  const all=allTarefas(),total=all.length,done=all.filter(t=>t.status==='concluida').length;
-  const pct=total?Math.round(done/total*100):0;
-  const tMin=all.reduce((s,t)=>s+t.duracaoMin,0),dMin=all.filter(t=>t.status==='concluida').reduce((s,t)=>s+t.duracaoMin,0);
-  return{total,done,pending:total-done,pct,tMin,dMin};
-}
-function typeStats(){
-  const res={};Object.keys(TYPES).forEach(k=>{res[k]={total:0,done:0}});
-  allTarefas().forEach(t=>{const k=t.primaryType||t.type||'TEORIA';if(res[k]){res[k].total++;if(t.status==='concluida')res[k].done++}});
-  return res;
-}
-function markTask(discId,aulaId,tarId,status){
-  const d=S.disciplinas.find(x=>x.id===discId);if(!d)return;
-  const a=d.aulas.find(x=>x.id===aulaId);if(!a)return;
-  const t=a.tarefas.find(x=>x.id===tarId);if(!t)return;
-  t.status=status;t.concluidaEm=status==='concluida'?new Date().toISOString():null;
-  saveState();renderAll();
-}
+function getTotalMinsForDisc(id){const d=S.disciplinas.find(x=>x.id===id);if(!d)return 0;return d.aulas.flatMap(a=>a.tarefas).reduce((s,t)=>s+t.duracaoMin,0)}
+function stats(){const all=allTarefas(),total=all.length,done=all.filter(t=>t.status==='concluida').length;const pct=total?Math.round(done/total*100):0;const tMin=all.reduce((s,t)=>s+t.duracaoMin,0),dMin=all.filter(t=>t.status==='concluida').reduce((s,t)=>s+t.duracaoMin,0);return{total,done,pending:total-done,pct,tMin,dMin}}
+function typeStats(){const res={};Object.keys(TYPES).forEach(k=>{res[k]={total:0,done:0}});allTarefas().forEach(t=>{const k=t.primaryType||t.type||'TEORIA';if(res[k]){res[k].total++;if(t.status==='concluida')res[k].done++}});return res}
+function markTask(discId,aulaId,tarId,status){const d=S.disciplinas.find(x=>x.id===discId);if(!d)return;const a=d.aulas.find(x=>x.id===aulaId);if(!a)return;const t=a.tarefas.find(x=>x.id===tarId);if(!t)return;t.status=status;t.concluidaEm=status==='concluida'?new Date().toISOString():null;saveState();renderAll()}
 function toggleDet(id){const el=document.getElementById('det-'+id);if(el)el.classList.toggle('open')}
 
 function taskCard(t,withCheck){
@@ -749,19 +751,9 @@ function calcMeta(totalMins){
   if(surplus>0){
     const needMore=discData.filter(d=>d.pendMins>d.alloc);
     const totalW=needMore.reduce((s,d)=>s+d.disc.peso,0);
-    if(totalW>0) needMore.forEach(d=>{
-      const extra=Math.round(surplus*d.disc.peso/totalW);
-      d.alloc=Math.min(d.pendMins,d.alloc+extra);
-    });
+    if(totalW>0) needMore.forEach(d=>{const extra=Math.round(surplus*d.disc.peso/totalW);d.alloc=Math.min(d.pendMins,d.alloc+extra)});
   }
-  discData.forEach(d=>{
-    let bud=d.alloc;d.selected=[];
-    for(const t of d.tasks){
-      if(bud<=0)break;
-      if(t.duracaoMin<=bud+10){d.selected.push(t);bud-=t.duracaoMin}
-      else{if(d.selected.length===0){d.selected.push(t);bud-=t.duracaoMin}break}
-    }
-  });
+  discData.forEach(d=>{let bud=d.alloc;d.selected=[];for(const t of d.tasks){if(bud<=0)break;if(t.duracaoMin<=bud+10){d.selected.push(t);bud-=t.duracaoMin}else{if(d.selected.length===0){d.selected.push(t);bud-=t.duracaoMin}break}}});
   return discData;
 }
 
@@ -775,11 +767,8 @@ function renderMeta(){
     if(d.tasks.length===0 && d.alloc===0)return;
     const pct=totalMins>0?Math.round(d.alloc/totalMins*100):0;
     html+=`<div style="display:grid;grid-template-columns:160px 1fr 60px 60px;align-items:center;gap:10px;margin-bottom:8px">
-      <span style="font-size:12px;color:var(--tx);display:flex;align-items:center;gap:6px">
-        <span class="disc-color-dot" style="background:${d.disc.cor}"></span>${d.disc.nome}</span>
-      <div style="background:var(--s3);border-radius:4px;height:22px;overflow:hidden">
-        <div style="background:${d.disc.cor};width:${pct}%;height:100%;opacity:.85;display:flex;align-items:center;padding-left:8px">
-          <span style="font-size:10px;font-weight:600;color:#fff">${pct?pct+'%':''}</span></div></div>
+      <span style="font-size:12px;color:var(--tx);display:flex;align-items:center;gap:6px"><span class="disc-color-dot" style="background:${d.disc.cor}"></span>${d.disc.nome}</span>
+      <div style="background:var(--s3);border-radius:4px;height:22px;overflow:hidden"><div style="background:${d.disc.cor};width:${pct}%;height:100%;opacity:.85;display:flex;align-items:center;padding-left:8px"><span style="font-size:10px;font-weight:600;color:#fff">${pct?pct+'%':''}</span></div></div>
       <span style="font-size:11px;color:var(--mu);text-align:right;font-family:'JetBrains Mono',monospace">${fmtMin(d.alloc)}</span>
       <span style="font-size:10px;color:${d.pendMins===0?'var(--gr)':'var(--mu)'}">${d.pendMins===0?'✔ fim':'rest: '+fmtMin(d.pendMins)}</span>
     </div>`;
@@ -834,16 +823,8 @@ function renderDisciplinas(){
   document.getElementById('discList').innerHTML=html;
 }
 
-function delAula(discId,aulaId){
-  if(!confirm('Remover esta aula?'))return;
-  const d=S.disciplinas.find(x=>x.id===discId);if(!d)return;
-  d.aulas=d.aulas.filter(a=>a.id!==aulaId);saveState();renderAll();
-}
-function resetarProgresso(){
-  if(!confirm('Resetar status de todas as tarefas para pendente?'))return;
-  S.disciplinas.forEach(d=>d.aulas.forEach(a=>a.tarefas.forEach(t=>{t.status='pendente';t.concluidaEm=null})));
-  saveState();renderAll();
-}
+function delAula(discId,aulaId){if(!confirm('Remover esta aula?'))return;const d=S.disciplinas.find(x=>x.id===discId);if(!d)return;d.aulas=d.aulas.filter(a=>a.id!==aulaId);saveState();renderAll()}
+function resetarProgresso(){if(!confirm('Resetar status de todas as tarefas para pendente?'))return;S.disciplinas.forEach(d=>d.aulas.forEach(a=>a.tarefas.forEach(t=>{t.status='pendente';t.concluidaEm=null})));saveState();renderAll()}
 
 function calcPrevisao(hPorDia,dPorSemana){
   const minsWeek=hPorDia*60*dPorSemana;
@@ -878,12 +859,9 @@ function renderPrevisao(){
   data.forEach(d=>{
     const done=d.pct===100;
     html+=`<div style="display:grid;grid-template-columns:180px 1fr 70px 110px;align-items:center;gap:10px;margin-bottom:10px">
-      <span style="font-size:12px;color:var(--tx);display:flex;align-items:center;gap:6px">
-        <span class="disc-color-dot" style="background:${d.disc.cor}"></span>${d.disc.nome}</span>
-      <div>
-        <div style="background:var(--s3);border-radius:99px;height:6px;overflow:hidden"><div style="background:${d.disc.cor};width:${d.pct}%;height:100%;border-radius:99px"></div></div>
-        <div style="font-size:10px;color:var(--mu);margin-top:2px">${d.pct}% · ${fmtMin(d.pMins)} restantes</div>
-      </div>
+      <span style="font-size:12px;color:var(--tx);display:flex;align-items:center;gap:6px"><span class="disc-color-dot" style="background:${d.disc.cor}"></span>${d.disc.nome}</span>
+      <div><div style="background:var(--s3);border-radius:99px;height:6px;overflow:hidden"><div style="background:${d.disc.cor};width:${d.pct}%;height:100%;border-radius:99px"></div></div>
+        <div style="font-size:10px;color:var(--mu);margin-top:2px">${d.pct}% · ${fmtMin(d.pMins)} restantes</div></div>
       <span style="font-family:'JetBrains Mono',monospace;font-size:12px;color:${done?'var(--gr)':'var(--tx)'};text-align:right">${done?'✔':d.semanas>0?Math.ceil(d.semanas)+'sem':'—'}</span>
       <span style="font-size:11px;color:${done?'var(--gr)':'var(--mu)'};text-align:right">${done?'Concluída':d.dataFim?fmtDate(d.dataFim):'—'}</span>
     </div>`;
@@ -906,95 +884,48 @@ function renderPrevisao(){
 }
 
 function parseXlsxQuestoes(arrayBuffer){
-  const wb = XLSX.read(arrayBuffer, {type:'array'});
+  const wb=XLSX.read(arrayBuffer,{type:'array'});
   if(!wb.SheetNames.length) throw new Error('Arquivo sem planilhas');
-  const sheet = wb.Sheets[wb.SheetNames[0]];
-  
-  let maxR=0, maxC=0;
-  for(const k in sheet){
-    if(k.startsWith('!')) continue;
-    const m = k.match(/^([A-Z]+)(\d+)$/);
-    if(m){
-      const c = XLSX.utils.decode_col(m[1]);
-      const r = parseInt(m[2]) - 1;
-      if(r > maxR) maxR = r;
-      if(c > maxC) maxC = c;
-    }
-  }
-  if(maxR > 0){
-    sheet['!ref'] = XLSX.utils.encode_range({s:{r:0,c:0}, e:{r:maxR, c:maxC}});
-  }
-  const data = XLSX.utils.sheet_to_json(sheet, {header:1, defval:null, raw:true, blankrows:false});
-  if(data.length < 2) throw new Error('Planilha sem linhas de dados (apenas cabeçalho).');
+  const sheet=wb.Sheets[wb.SheetNames[0]];
+  let maxR=0,maxC=0;
+  for(const k in sheet){if(k.startsWith('!'))continue;const m=k.match(/^([A-Z]+)(\d+)$/);if(m){const c=XLSX.utils.decode_col(m[1]);const r=parseInt(m[2])-1;if(r>maxR)maxR=r;if(c>maxC)maxC=c}}
+  if(maxR>0){sheet['!ref']=XLSX.utils.encode_range({s:{r:0,c:0},e:{r:maxR,c:maxC}})}
+  const data=XLSX.utils.sheet_to_json(sheet,{header:1,defval:null,raw:true,blankrows:false});
+  if(data.length<2) throw new Error('Planilha sem linhas de dados.');
   function norm(s){return String(s||'').trim().toLowerCase().normalize('NFC').replace(/\s+/g,' ')}
-  const headers = (data[0]||[]).map(norm);
-  function colIdx(...names){
-    for(const n of names){
-      const target = norm(n);
-      const idx = headers.findIndex(h => h === target);
-      if(idx !== -1) return idx;
-    }
-    return -1;
+  const headers=(data[0]||[]).map(norm);
+  function colIdx(...names){for(const n of names){const target=norm(n);const idx=headers.findIndex(h=>h===target);if(idx!==-1)return idx}return -1}
+  const iHier=colIdx('hierarquia'),iNome=colIdx('índice','indice'),iQR=colIdx('questões resolvidas','questoes resolvidas'),iAcN=colIdx('quantidade de acertos'),iErN=colIdx('quantidade de erros'),iAcP=colIdx('acertos (%)','acertos(%)'),iErP=colIdx('erros (%)','erros(%)'),iPeso=colIdx('peso');
+  if(iHier===-1||iNome===-1) throw new Error('Colunas obrigatórias não encontradas.');
+  const disciplinas=[];let currentDisc=null;
+  for(let r=1;r<data.length;r++){
+    const row=data[r]||[];const hier=row[iHier];const nome=row[iNome];
+    if(nome==null||String(nome).trim()==='')continue;
+    const item={nome:String(nome).trim(),qResolvidas:Number(row[iQR])||0,acertos:Number(row[iAcN])||0,erros:Number(row[iErN])||0,pctAcerto:Number(row[iAcP])||0,pctErro:Number(row[iErP])||0,peso:iPeso!==-1?(Number(row[iPeso])||1):1};
+    const hierStr=hier==null?'':String(hier).trim();
+    if(hierStr===''){currentDisc={...item,topicos:[]};disciplinas.push(currentDisc)}
+    else{if(!currentDisc)continue;currentDisc.topicos.push({...item,codigo:hierStr})}
   }
-  const iHier = colIdx('hierarquia');
-  const iNome = colIdx('índice','indice');
-  const iQR   = colIdx('questões resolvidas','questoes resolvidas');
-  const iAcN  = colIdx('quantidade de acertos');
-  const iErN  = colIdx('quantidade de erros');
-  const iAcP  = colIdx('acertos (%)','acertos(%)');
-  const iErP  = colIdx('erros (%)','erros(%)');
-  const iPeso = colIdx('peso');
-  if(iHier === -1 || iNome === -1){
-    throw new Error('Colunas obrigatórias não encontradas. Cabeçalhos esperados: Hierarquia, índice, Questões Resolvidas, Acertos (%), Quantidade de acertos, Erros (%), Quantidade de erros, Peso.');
-  }
-  const disciplinas = [];
-  let currentDisc = null;
-  for(let r = 1; r < data.length; r++){
-    const row = data[r] || [];
-    const hier = row[iHier];
-    const nome = row[iNome];
-    if(nome == null || String(nome).trim() === '') continue;
-    const item = {
-      nome: String(nome).trim(),
-      qResolvidas: Number(row[iQR])||0,
-      acertos: Number(row[iAcN])||0,
-      erros: Number(row[iErN])||0,
-      pctAcerto: Number(row[iAcP])||0,
-      pctErro: Number(row[iErP])||0,
-      peso: iPeso!==-1?(Number(row[iPeso])||1):1,
-    };
-    const hierStr = hier == null ? '' : String(hier).trim();
-    if(hierStr === ''){
-      currentDisc = {...item, topicos: []};
-      disciplinas.push(currentDisc);
-    } else {
-      if(!currentDisc) continue;
-      currentDisc.topicos.push({...item, codigo: hierStr});
-    }
-  }
-  if(!disciplinas.length) throw new Error('Nenhuma disciplina encontrada. Verifique se a primeira coluna (Hierarquia) está vazia nas linhas de matéria.');
-  const total = disciplinas.reduce((s,d)=>s+d.qResolvidas,0);
-  const totalA = disciplinas.reduce((s,d)=>s+d.acertos,0);
-  const totalE = disciplinas.reduce((s,d)=>s+d.erros,0);
-  const pctGeral = total>0?Math.round(totalA/total*1000)/10:0;
-  return {disciplinas, total, totalAcertos:totalA, totalErros:totalE, pctGeral};
+  if(!disciplinas.length) throw new Error('Nenhuma disciplina encontrada.');
+  const total=disciplinas.reduce((s,d)=>s+d.qResolvidas,0);
+  const totalA=disciplinas.reduce((s,d)=>s+d.acertos,0);
+  const totalE=disciplinas.reduce((s,d)=>s+d.erros,0);
+  const pctGeral=total>0?Math.round(totalA/total*1000)/10:0;
+  return{disciplinas,total,totalAcertos:totalA,totalErros:totalE,pctGeral};
 }
 
-let _xlsxParsed = null;
+let _xlsxParsed=null;
 function lerXlsx(input){
-  const file = input.files[0];if(!file)return;
-  const reader = new FileReader();
-  reader.onload = e=>{
+  const file=input.files[0];if(!file)return;
+  const reader=new FileReader();
+  reader.onload=e=>{
     try{
-      _xlsxParsed = parseXlsxQuestoes(e.target.result);
-      // Se não der rótulo, usa a data atual
+      _xlsxParsed=parseXlsxQuestoes(e.target.result);
       const d=new Date();
-      const defaultLbl = `${d.getDate().toString().padStart(2,'0')}/${(d.getMonth()+1).toString().padStart(2,'0')}/${d.getFullYear()}`;
-      const lbl = document.getElementById('xls-label').value.trim() || `Importação ${defaultLbl}`;
-      
-      const parsedData = _xlsxParsed;
-      const weakCount = parsedData.disciplinas.filter(x=>x.pctAcerto<60 && x.qResolvidas>=5).length;
-      document.getElementById('xls-preview').innerHTML = `
+      const defaultLbl=`${d.getDate().toString().padStart(2,'0')}/${(d.getMonth()+1).toString().padStart(2,'0')}/${d.getFullYear()}`;
+      const parsedData=_xlsxParsed;
+      const weakCount=parsedData.disciplinas.filter(x=>x.pctAcerto<60&&x.qResolvidas>=5).length;
+      document.getElementById('xls-preview').innerHTML=`
         <div class="parse-preview">
           <div style="font-size:12px;color:var(--gr);margin-bottom:14px">✔ Arquivo lido com sucesso</div>
           <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px">
@@ -1008,9 +939,7 @@ function lerXlsx(input){
             <button class="btn btn-g" onclick="document.getElementById('xls-preview').innerHTML='';_xlsxParsed=null;document.getElementById('xls-file').value=''">Cancelar</button>
           </div>
         </div>`;
-    }catch(err){
-      document.getElementById('xls-preview').innerHTML = `<div class="alert-box alert-err">Erro ao ler arquivo: ${err.message}</div>`;
-    }
+    }catch(err){document.getElementById('xls-preview').innerHTML=`<div class="alert-box alert-err">Erro ao ler arquivo: ${err.message}</div>`}
   };
   reader.readAsArrayBuffer(file);
 }
@@ -1018,180 +947,62 @@ function lerXlsx(input){
 function confirmarXlsx(){
   if(!_xlsxParsed)return;
   const d=new Date();
-  const defaultLbl = `${d.getDate().toString().padStart(2,'0')}/${(d.getMonth()+1).toString().padStart(2,'0')}/${d.getFullYear()}`;
-  const lbl = document.getElementById('xls-label').value.trim() || `Importação ${defaultLbl}`;
-  
-  const novoImport = {
-    id: uid(),
-    importadoEm: new Date().toISOString(),
-    label: lbl,
-    total: _xlsxParsed.total,
-    acertos: _xlsxParsed.totalAcertos,
-    erros: _xlsxParsed.totalErros,
-    pctGeral: _xlsxParsed.pctGeral,
-    disciplinas: _xlsxParsed.disciplinas
-  };
-  
+  const defaultLbl=`${d.getDate().toString().padStart(2,'0')}/${(d.getMonth()+1).toString().padStart(2,'0')}/${d.getFullYear()}`;
+  const lbl=document.getElementById('xls-label').value.trim()||`Importação ${defaultLbl}`;
+  const novoImport={id:uid(),importadoEm:new Date().toISOString(),label:lbl,total:_xlsxParsed.total,acertos:_xlsxParsed.totalAcertos,erros:_xlsxParsed.totalErros,pctGeral:_xlsxParsed.pctGeral,disciplinas:_xlsxParsed.disciplinas};
   S.questoes_history.push(novoImport);
   saveState();
-  
-  document.getElementById('xls-label').value='';
-  document.getElementById('xls-file').value='';
-  document.getElementById('xls-preview').innerHTML='';
-  _xlsxParsed = null;
+  document.getElementById('xls-label').value='';document.getElementById('xls-file').value='';document.getElementById('xls-preview').innerHTML='';_xlsxParsed=null;
   goTab('questoes');renderAll();
 }
 
-let qShowAll = false;
-let qMinQ = 1;
-let qPeriod = 'all'; // 30, 90, 180, all
+let qShowAll=false,qMinQ=1,qPeriod='all';
 
 function renderQuestoes(){
-  const c = document.getElementById('questoesContent');
-  if(!S.questoes_history || S.questoes_history.length === 0){
-    c.innerHTML = `<div class="empty">
-      <div style="font-size:36px;margin-bottom:14px">📊</div>
-      <div style="margin-bottom:14px">Nenhuma estatística importada ainda.</div>
-      <button class="btn btn-p" onclick="goTab('importar');setTimeout(()=>document.querySelector('.imp-tab:nth-child(3)').click(),50)">Importar planilha TecConcursos</button>
-    </div>`;
-    document.getElementById('qChartBox').style.display = 'none';
-    document.getElementById('qInfoLabel').textContent = '';
+  const c=document.getElementById('questoesContent');
+  if(!S.questoes_history||S.questoes_history.length===0){
+    c.innerHTML=`<div class="empty"><div style="font-size:36px;margin-bottom:14px">📊</div><div style="margin-bottom:14px">Nenhuma estatística importada ainda.</div><button class="btn btn-p" onclick="goTab('importar');setTimeout(()=>document.querySelector('.imp-tab:nth-child(3)').click(),50)">Importar planilha TecConcursos</button></div>`;
+    document.getElementById('qChartBox').style.display='none';
     return;
   }
-  
-  // Filtrar histórico baseado na data
-  const now = new Date();
-  let filteredHistory = S.questoes_history.filter(h => {
-    if(qPeriod === 'all') return true;
-    const diffTime = Math.abs(now - new Date(h.importadoEm));
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    return diffDays <= parseInt(qPeriod);
+  const now=new Date();
+  let filteredHistory=S.questoes_history.filter(h=>{
+    if(qPeriod==='all')return true;
+    const diffDays=Math.ceil(Math.abs(now-new Date(h.importadoEm))/(1000*60*60*24));
+    return diffDays<=parseInt(qPeriod);
   });
-  
-  filteredHistory.sort((a,b) => new Date(a.importadoEm) - new Date(b.importadoEm));
-  
-  if(filteredHistory.length === 0) {
-    c.innerHTML = `<div class="empty">Nenhuma importação encontrada neste período de tempo.</div>`;
-    document.getElementById('qChartBox').style.display = 'none';
-    return;
-  }
-
-  // Gráfico
-  document.getElementById('qChartBox').style.display = 'block';
-  const ctx = document.getElementById('qChart').getContext('2d');
-  if(qChartInstance) qChartInstance.destroy();
-  qChartInstance = new Chart(ctx, {
-    type: 'line',
-    data: {
-      labels: filteredHistory.map(h => h.label || fmtDate(new Date(h.importadoEm))),
-      datasets: [{
-        label: '% de Acertos',
-        data: filteredHistory.map(h => h.pctGeral),
-        borderColor: '#f5a623',
-        backgroundColor: 'rgba(245,166,35,0.1)',
-        borderWidth: 3,
-        pointBackgroundColor: '#0c0f14',
-        pointBorderColor: '#f5a623',
-        pointBorderWidth: 2,
-        pointRadius: 5,
-        fill: true,
-        tension: 0.3
-      }]
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      plugins: { legend: { display: false }, tooltip: {titleFont: {family: 'DM Sans'}, bodyFont: {family: 'JetBrains Mono'}} },
-      scales: { 
-        y: { min: 0, max: 100, grid: { color: '#2a3547' }, ticks: { color: '#6b7a90', font:{family: 'JetBrains Mono'} } },
-        x: { grid: { display: false }, ticks: { color: '#6b7a90', font:{family: 'DM Sans'} } }
-      }
-    }
-  });
-
-  const q = filteredHistory[filteredHistory.length - 1];
-  const qOldest = filteredHistory[0];
-  
-  document.getElementById('qInfoLabel').textContent = `Dados do arquivo: ${q.label} (Importado em ${fmtDate(new Date(q.importadoEm))})`;
-  
-  let html = '';
-  const allTopicos = q.disciplinas.flatMap(d => d.topicos.map(t => ({...t, discNome: d.nome})));
-  const weakTopicos = allTopicos
-    .filter(t => t.qResolvidas >= 5 && t.pctAcerto < 60)
-    .sort((a,b) => a.pctAcerto - b.pctAcerto)
-    .slice(0, 10);
-    
-  const visibleDisc = qShowAll ? q.disciplinas : q.disciplinas.filter(d => d.qResolvidas >= qMinQ);
-  const weakDiscCount = q.disciplinas.filter(d=>d.pctAcerto<60 && d.qResolvidas>=5).length;
-  
-  html += `<div class="sg">
-    <div class="sc"><span class="sv">${q.total}</span><div class="sl">Questões</div></div>
-    <div class="sc"><span class="sv" style="color:${accColor(q.pctGeral)}">${q.pctGeral}%</span><div class="sl">Acerto Geral</div></div>
-    <div class="sc"><span class="sv">${q.disciplinas.length}</span><div class="sl">Matérias</div></div>
-    <div class="sc"><span class="sv" style="color:var(--re)">${weakDiscCount}</span><div class="sl">Matérias <60%</div></div>
-  </div>`;
-  
+  filteredHistory.sort((a,b)=>new Date(a.importadoEm)-new Date(b.importadoEm));
+  if(filteredHistory.length===0){c.innerHTML=`<div class="empty">Nenhuma importação encontrada neste período.</div>`;document.getElementById('qChartBox').style.display='none';return}
+  document.getElementById('qChartBox').style.display='block';
+  const ctx=document.getElementById('qChart').getContext('2d');
+  if(qChartInstance)qChartInstance.destroy();
+  qChartInstance=new Chart(ctx,{type:'line',data:{labels:filteredHistory.map(h=>h.label||fmtDate(new Date(h.importadoEm))),datasets:[{label:'% de Acertos',data:filteredHistory.map(h=>h.pctGeral),borderColor:'#f5a623',backgroundColor:'rgba(245,166,35,0.1)',borderWidth:3,pointBackgroundColor:'#0c0f14',pointBorderColor:'#f5a623',pointBorderWidth:2,pointRadius:5,fill:true,tension:0.3}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{min:0,max:100,grid:{color:'#2a3547'},ticks:{color:'#6b7a90'}},x:{grid:{display:false},ticks:{color:'#6b7a90'}}}}});
+  const q=filteredHistory[filteredHistory.length-1];
+  const qOldest=filteredHistory[0];
+  document.getElementById('qInfoLabel').textContent=`Dados: ${q.label} (${fmtDate(new Date(q.importadoEm))})`;
+  let html='';
+  const allTopicos=q.disciplinas.flatMap(d=>d.topicos.map(t=>({...t,discNome:d.nome})));
+  const weakTopicos=allTopicos.filter(t=>t.qResolvidas>=5&&t.pctAcerto<60).sort((a,b)=>a.pctAcerto-b.pctAcerto).slice(0,10);
+  const visibleDisc=qShowAll?q.disciplinas:q.disciplinas.filter(d=>d.qResolvidas>=qMinQ);
+  const weakDiscCount=q.disciplinas.filter(d=>d.pctAcerto<60&&d.qResolvidas>=5).length;
+  html+=`<div class="sg"><div class="sc"><span class="sv">${q.total}</span><div class="sl">Questões</div></div><div class="sc"><span class="sv" style="color:${accColor(q.pctGeral)}">${q.pctGeral}%</span><div class="sl">Acerto Geral</div></div><div class="sc"><span class="sv">${q.disciplinas.length}</span><div class="sl">Matérias</div></div><div class="sc"><span class="sv" style="color:var(--re)">${weakDiscCount}</span><div class="sl">Matérias <60%</div></div></div>`;
   if(weakTopicos.length){
-    html += `<div class="card"><div class="ct">🎯 Pontos Fracos Atuais (≥5 questões, <60% acerto)</div><div class="q-weak-list">`;
-    weakTopicos.forEach(t => {
-      html += `<div class="q-weak-item">
-        <div>
-          <div class="q-weak-name">${t.nome}</div>
-          <div class="q-weak-disc">${t.discNome} · ${t.codigo||''}</div>
-        </div>
-        <div class="q-acc low">${Math.round(t.pctAcerto)}%</div>
-        <div class="q-vol">${t.acertos}/${t.qResolvidas} acertos</div>
-      </div>`;
-    });
-    html += `</div></div>`;
+    html+=`<div class="card"><div class="ct">🎯 Pontos Fracos (≥5 questões, <60% acerto)</div><div class="q-weak-list">`;
+    weakTopicos.forEach(t=>{html+=`<div class="q-weak-item"><div><div class="q-weak-name">${t.nome}</div><div class="q-weak-disc">${t.discNome} · ${t.codigo||''}</div></div><div class="q-acc low">${Math.round(t.pctAcerto)}%</div><div class="q-vol">${t.acertos}/${t.qResolvidas}</div></div>`});
+    html+=`</div></div>`;
   }
-  
   visibleDisc.sort((a,b)=>b.qResolvidas-a.qResolvidas);
-  visibleDisc.forEach((d,i) => {
-    const acc = Math.round(d.pctAcerto);
-    const accCl = accClass(acc);
-    const accCol = accColor(acc);
-    
-    let evoHtml = `<span class="q-evo flat">—</span>`;
-    if(filteredHistory.length > 1) {
-      const oldDisc = qOldest.disciplinas.find(x => x.nome === d.nome);
-      if(oldDisc && oldDisc.qResolvidas > 0) {
-        const diff = d.pctAcerto - oldDisc.pctAcerto;
-        if(diff > 0.5) evoHtml = `<span class="q-evo up">↑ +${diff.toFixed(1)}%</span>`;
-        else if(diff < -0.5) evoHtml = `<span class="q-evo down">↓ ${diff.toFixed(1)}%</span>`;
-      }
-    }
-
-    html += `<div class="q-disc-card">
-      <div class="q-disc-head" onclick="this.nextElementSibling.classList.toggle('open')">
-        <span class="disc-color-dot" style="background:${accCol}"></span>
-        <span class="q-disc-name">${d.nome}</span>
-        <div class="q-bar"><div class="q-bar-fill" style="width:${acc}%;background:${accCol}"></div></div>
-        <div>
-          <div class="q-acc ${accCl}">${acc}%</div>
-          <div class="q-vol">${d.acertos}/${d.qResolvidas}</div>
-        </div>
-        <div style="text-align:right">${evoHtml}</div>
-        <span style="color:var(--mu);font-size:12px;text-align:right">▾</span>
-      </div>
-      <div class="q-topics">`;
-    if(d.topicos.length === 0){
-      html += `<div style="padding:14px 0;font-size:12px;color:var(--mu);text-align:center">Sem tópicos detalhados.</div>`;
-    } else {
-      d.topicos.forEach(t => {
-        const level = (t.codigo||'').split('.').length;
-        const tAcc = Math.round(t.pctAcerto);
-        html += `<div class="q-topic" style="padding-left:${(level-1)*16}px">
-          <div class="q-topic-name">${t.codigo||''} ${t.nome}</div>
-          <div class="q-acc ${accClass(tAcc)}" style="font-size:12px">${t.qResolvidas>0?tAcc+'%':'—'}</div>
-          <div class="q-vol">${t.acertos}/${t.qResolvidas}</div>
-          <div></div>
-        </div>`;
-      });
-    }
-    html += `</div></div>`;
+  visibleDisc.forEach(d=>{
+    const acc=Math.round(d.pctAcerto);
+    const accCl=accClass(acc);const accCol=accColor(acc);
+    let evoHtml=`<span class="q-evo flat">—</span>`;
+    if(filteredHistory.length>1){const oldDisc=qOldest.disciplinas.find(x=>x.nome===d.nome);if(oldDisc&&oldDisc.qResolvidas>0){const diff=d.pctAcerto-oldDisc.pctAcerto;if(diff>0.5)evoHtml=`<span class="q-evo up">↑ +${diff.toFixed(1)}%</span>`;else if(diff<-0.5)evoHtml=`<span class="q-evo down">↓ ${diff.toFixed(1)}%</span>`}}
+    html+=`<div class="q-disc-card"><div class="q-disc-head" onclick="this.nextElementSibling.classList.toggle('open')"><span class="disc-color-dot" style="background:${accCol}"></span><span class="q-disc-name">${d.nome}</span><div class="q-bar"><div class="q-bar-fill" style="width:${acc}%;background:${accCol}"></div></div><div><div class="q-acc ${accCl}">${acc}%</div><div class="q-vol">${d.acertos}/${d.qResolvidas}</div></div><div style="text-align:right">${evoHtml}</div><span style="color:var(--mu);font-size:12px;text-align:right">▾</span></div><div class="q-topics">`;
+    if(d.topicos.length===0){html+=`<div style="padding:14px 0;font-size:12px;color:var(--mu);text-align:center">Sem tópicos detalhados.</div>`}
+    else{d.topicos.forEach(t=>{const level=(t.codigo||'').split('.').length;const tAcc=Math.round(t.pctAcerto);html+=`<div class="q-topic" style="padding-left:${(level-1)*16}px"><div class="q-topic-name">${t.codigo||''} ${t.nome}</div><div class="q-acc ${accClass(tAcc)}" style="font-size:12px">${t.qResolvidas>0?tAcc+'%':'—'}</div><div class="q-vol">${t.acertos}/${t.qResolvidas}</div><div></div></div>`})}
+    html+=`</div></div>`;
   });
-  c.innerHTML = html;
+  c.innerHTML=html;
 }
 
 function parseNLM(text){
@@ -1211,28 +1022,17 @@ function parseNLM(text){
     const edital=edM?edM[1]==='✅'?'ok':'ctx':'ok';
     const topM=block.match(/\*{0,2}T[óo]pico\s+principal\*{0,2}:?\s*(.+)/i);
     const topico=topM?cleanMd(topM[1]):`Tarefa ${i+1}`;
-    const getSec=(emoji)=>{
-      const re=new RegExp(`(?:#{0,6}\\s*)?${emoji}[^\\n]*\\n([\\s\\S]*?)(?=\\n\\s*(?:#{0,6}\\s*)?(?:📖|⚖️|📝|💡|🔑|✂️)|\\n#{0,5}\\s*TAREFA\\s+\\d+|$)`,'i');
-      const m=block.match(re);return m?m[1].trim():'';
-    };
+    const getSec=(emoji)=>{const re=new RegExp(`(?:#{0,6}\\s*)?${emoji}[^\\n]*\\n([\\s\\S]*?)(?=\\n\\s*(?:#{0,6}\\s*)?(?:📖|⚖️|📝|💡|🔑|✂️)|\\n#{0,5}\\s*TAREFA\\s+\\d+|$)`,'i');const m=block.match(re);return m?m[1].trim():''};
     const comando=getSec('📖').replace(/^#+\s*/gm,'').trim();
     const leiSec=getSec('⚖️');
     const leiSeca=[];
     const tableRows=leiSec.match(/\|([^|]+)\|([^|]+)\|([^|]+)\|/g)||[];
-    tableRows.forEach(row=>{
-      const cols=row.split('|').map(c=>c.trim()).filter(Boolean);
-      if(cols.length>=3&&!cols[0].match(/^[-\s]+$/)&&!cols[0].toLowerCase().includes('dispositivo')){
-        leiSeca.push({dispositivo:cols[0],artigos:cols[1],motivo:cols[2]});
-      }
-    });
+    tableRows.forEach(row=>{const cols=row.split('|').map(c=>c.trim()).filter(Boolean);if(cols.length>=3&&!cols[0].match(/^[-\s]+$/)&&!cols[0].toLowerCase().includes('dispositivo')){leiSeca.push({dispositivo:cols[0],artigos:cols[1],motivo:cols[2]})}});
     const parseBullets=(sec)=>sec.split('\n').filter(l=>/^[•\-\*]/.test(l.trim())).map(l=>cleanMd(l.replace(/^[•\-\*]\s*/,''))).filter(Boolean);
     const questoesFixacao=parseBullets(getSec('📝'));
     const bizus=parseBullets(getSec('💡'));
-    const kwSec=getSec('🔑');
-    let keywords=[];
-    kwSec.split('\n').filter(l=>/^[•\-\*]/.test(l.trim())).map(l=>l.replace(/^[•\-\*]\s*/,'').trim()).forEach(b=>{
-      keywords=keywords.concat(b.split(',').map(k=>cleanMd(k)).filter(Boolean));
-    });
+    const kwSec=getSec('🔑');let keywords=[];
+    kwSec.split('\n').filter(l=>/^[•\-\*]/.test(l.trim())).map(l=>l.replace(/^[•\-\*]\s*/,'').trim()).forEach(b=>{keywords=keywords.concat(b.split(',').map(k=>cleanMd(k)).filter(Boolean))});
     tasks.push({id:uid(),label:`Tarefa ${i+1}`,type:finalType,primaryType:primType,edital,paginas,topico,descricao:'',comando,leiSeca,duracaoMin:durMin,duracaoMax:durMax,status:'pendente',bizus,filtros:[],keywords,questoesFixacao});
   });
   return tasks;
@@ -1249,10 +1049,7 @@ function parsearNLM(){
   let html=`<div class="parse-preview"><div style="font-size:12px;color:var(--gr);margin-bottom:12px">✔ ${_parsedTasks.length} tarefa(s) encontrada(s)</div>`;
   const discId=document.getElementById('nlm-disc').value;
   const disc=S.disciplinas.find(d=>d.id===discId)||S.disciplinas[0];
-  _parsedTasks.forEach(t=>{
-    const ft={...t,discId:disc?disc.id:'',discNome:disc?disc.nome:'',discCor:disc?disc.cor:'#888',aulaId:'preview',aulaCod:cod,aulaTit:tit};
-    html+=taskCard(ft,false);
-  });
+  _parsedTasks.forEach(t=>{const ft={...t,discId:disc?disc.id:'',discNome:disc?disc.nome:'',discCor:disc?disc.cor:'#888',aulaId:'preview',aulaCod:cod,aulaTit:tit};html+=taskCard(ft,false)});
   html+=`<div style="margin-top:14px;display:flex;gap:10px"><button class="btn btn-p" onclick="confirmarNLM()">✔ Confirmar</button><button class="btn btn-g" onclick="document.getElementById('nlm-preview').innerHTML=''">Cancelar</button></div></div>`;
   document.getElementById('nlm-preview').innerHTML=html;
 }
@@ -1285,7 +1082,7 @@ function renderForms(){
         <div class="fg full"><label>Tópico</label><input id="tp-${t.id}"></div>
         <div class="fg full"><label>📖 Comando</label><textarea id="cm-${t.id}"></textarea></div>
         <div class="fg full"><label>⚖️ Lei Seca (Disp | Arts | Motivo — uma por linha)</label><textarea id="ls-${t.id}"></textarea></div>
-        <div class="fg full"><label>📝 Questões de Fixação (uma por linha — ex: Questões nº 01 a 07)</label><textarea id="qf-${t.id}" placeholder="Questões nº: 01 a 07 e Questão 12&#10;Localização no PDF: Páginas 81–95"></textarea></div>
+        <div class="fg full"><label>📝 Questões de Fixação</label><textarea id="qf-${t.id}"></textarea></div>
         <div class="fg full"><label>💡 Bizus (um por linha)</label><textarea id="bz-${t.id}"></textarea></div>
         <div class="fg full"><label>🔑 Palavras-Chave (vírgula)</label><textarea id="kw-${t.id}"></textarea></div>
       </div></div>`).join('');
@@ -1337,8 +1134,7 @@ function importarBackup(input){
       const data=JSON.parse(e.target.result);
       if(!data.disciplinas)throw new Error('Formato inválido');
       if(confirm('Importar este backup? Os dados atuais serão substituídos.')){
-        S=data;
-        if(!S.config.lastModified)S.config.lastModified=Date.now();
+        S=data;if(!S.config.lastModified)S.config.lastModified=Date.now();
         saveState();renderAll();alert('Backup importado!');
       }
     }catch(err){alert('Arquivo inválido: '+err.message)}
@@ -1346,50 +1142,36 @@ function importarBackup(input){
   reader.readAsText(file);input.value='';
 }
 
-function openSettings(){
-  document.getElementById('modal-settings').classList.add('open');
-  renderSettings();
-}
+function openSettings(){document.getElementById('modal-settings').classList.add('open');renderSettings()}
 function closeSettings(){document.getElementById('modal-settings').classList.remove('open')}
 
 function renderSettings(){
-  let syncHtml='';
-  if(!currentUser){
-    syncHtml=`
-      <div class="alert-box alert-info">Sincronização em nuvem via Firebase. Faça login para salvar seus dados com segurança num ambiente Multi-Usuário.</div>
-      <button class="btn btn-p" onclick="loginFirebase()">🔑 Entrar com Google</button>`;
-  }else{
-    syncHtml=`
-      <div class="alert-box alert-ok">✓ Sincronizado na nuvem (Firebase)</div>
-      <div style="margin-bottom:8px">
-        <div style="font-size:11px;color:var(--mu);margin-bottom:4px">Conectado como</div>
-        <div class="tk-display">${currentUser.email}</div>
-      </div>
-      <div class="sync-status-line">
-        <span class="sync-dot s-${syncState}"></span>
-        ${syncState==='synced'?'Última sincronização: '+fmtDateTime(S.config.lastSyncAt):syncState==='syncing'?'Sincronizando…':syncState==='error'?'Erro — verifique o console':'Aguardando mudança'}
-      </div>
-      <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">
-        <button class="btn btn-g" onclick="pullFirebase(true)">↓ Forçar Puxar</button>
-        <button class="btn btn-g" onclick="pushFirebase(true)">↑ Forçar Empurrar</button>
-        <button class="btn btn-s" style="color:var(--re)" onclick="logoutFirebase()">Sair</button>
-      </div>`;
-  }
+  let syncHtml=`
+    <div class="alert-box alert-ok">✓ Sincronizado na nuvem (Firebase)</div>
+    <div style="margin-bottom:8px">
+      <div style="font-size:11px;color:var(--mu);margin-bottom:4px">Conectado como</div>
+      <div class="tk-display">${currentUser?currentUser.email:'—'}</div>
+    </div>
+    <div class="sync-status-line">
+      <span class="sync-dot s-${syncState}"></span>
+      ${syncState==='synced'?'Última sincronização: '+fmtDateTime(S.config.lastSyncAt):syncState==='syncing'?'Sincronizando…':syncState==='error'?'Erro — verifique o console':'Aguardando mudança'}
+    </div>
+    <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">
+      <button class="btn btn-g" onclick="pullFirebase(true)">↓ Forçar Puxar</button>
+      <button class="btn btn-g" onclick="pushFirebase(true)">↑ Forçar Empurrar</button>
+      <button class="btn btn-s" style="color:var(--re)" onclick="logoutFirebase()">Sair</button>
+    </div>`;
   document.getElementById('syncSettings').innerHTML=syncHtml;
 
-  // ── DISCIPLINAS E PESOS ──
   let wHtml='';
   const pesoTotal=S.disciplinas.reduce((s,d)=>s+d.peso,0);
   S.disciplinas.forEach(d=>{
-    const hasAulas=d.aulas.length>0;
     wHtml+=`<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
-      <input type="color" value="${d.cor}" style="width:26px;height:26px;border:1px solid var(--bd);border-radius:4px;padding:1px;background:var(--s2);cursor:pointer;flex-shrink:0"
-             onchange="updateDiscCor('${d.id}',this.value)">
+      <input type="color" value="${d.cor}" style="width:26px;height:26px;border:1px solid var(--bd);border-radius:4px;padding:1px;background:var(--s2);cursor:pointer;flex-shrink:0" onchange="updateDiscCor('${d.id}',this.value)">
       <span style="flex:1;font-size:13px;color:var(--tx)">${d.nome}</span>
-      <input type="number" value="${d.peso}" min="1" max="100" style="width:58px;text-align:center;font-family:'JetBrains Mono',monospace"
-             onchange="updateDiscPeso('${d.id}',this.value)">
+      <input type="number" value="${d.peso}" min="1" max="100" style="width:58px;text-align:center;font-family:'JetBrains Mono',monospace" onchange="updateDiscPeso('${d.id}',this.value)">
       <span style="color:var(--mu);font-size:11px">%</span>
-      <button class="btnx" style="font-size:10px;padding:2px 7px" onclick="removerDisciplina('${d.id}')" title="${hasAulas?'Tem aulas':'Remover'}">🗑</button>
+      <button class="btnx" style="font-size:10px;padding:2px 7px" onclick="removerDisciplina('${d.id}')">🗑</button>
     </div>`;
   });
   wHtml+=`<div style="font-size:11px;color:${pesoTotal===100?'var(--gr)':'var(--yl)'};margin-bottom:14px">Soma: ${pesoTotal}% ${pesoTotal!==100?'— ideal 100%':'✓'}</div>`;
@@ -1398,8 +1180,7 @@ function renderSettings(){
     <div style="font-size:10px;font-weight:700;color:var(--mu);text-transform:uppercase;letter-spacing:.1em;margin-bottom:10px">➕ Nova Disciplina</div>
     <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
       <input id="new-disc-nome" placeholder="Nome da disciplina" style="flex:1;min-width:140px">
-      <input type="color" id="new-disc-cor" value="${coresPre[S.disciplinas.length%coresPre.length]}"
-             style="width:32px;height:32px;border:1px solid var(--bd);border-radius:4px;padding:1px;background:var(--s2);cursor:pointer">
+      <input type="color" id="new-disc-cor" value="${coresPre[S.disciplinas.length%coresPre.length]}" style="width:32px;height:32px;border:1px solid var(--bd);border-radius:4px;padding:1px;background:var(--s2);cursor:pointer">
       <input type="number" id="new-disc-peso" value="10" min="1" max="100" style="width:60px;text-align:center;font-family:'JetBrains Mono',monospace" placeholder="%">
       <span style="font-size:11px;color:var(--mu)">%</span>
       <button class="btn btn-p" style="font-size:11px;padding:7px 14px" onclick="adicionarDisciplina()">Adicionar</button>
@@ -1407,7 +1188,6 @@ function renderSettings(){
   </div>`;
   document.getElementById('weightsSettings').innerHTML=wHtml;
 
-  // ── HORAS POR DIA DA SEMANA ──
   const hs=S.config.horasSemana||Array(7).fill(4);
   const nomes=['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
   const hoje=new Date().getDay();
@@ -1415,31 +1195,23 @@ function renderSettings(){
   let sHtml=`<div class="day-grid">`;
   nomes.forEach((n,i)=>{
     const isHoje=i===hoje;
-    sHtml+=`<div class="day-cell">
-      <div class="day-nm${isHoje?' hj':''}">${n}${isHoje?' ●':''}</div>
-      <input type="number" class="day-hi${isHoje?' hj':''}" value="${hs[i]}" min="0" max="12"
-             oninput="updateHoraDia(${i},this.value)">
-    </div>`;
+    sHtml+=`<div class="day-cell"><div class="day-nm${isHoje?' hj':''}">${n}${isHoje?' ●':''}</div><input type="number" class="day-hi${isHoje?' hj':''}" value="${hs[i]}" min="0" max="12" oninput="updateHoraDia(${i},this.value)"></div>`;
   });
-  sHtml+=`</div>
-    <div class="day-total">Total da semana: <span style="color:var(--amb)">${totalSem}h</span> · Hoje: <span style="color:var(--amb)">${hs[hoje]}h</span></div>`;
+  sHtml+=`</div><div class="day-total">Total da semana: <span style="color:var(--amb)">${totalSem}h</span> · Hoje: <span style="color:var(--amb)">${hs[hoje]}h</span></div>`;
   document.getElementById('scheduleSettings').innerHTML=sHtml;
 }
 
 function updateHoraDia(idx,val){
-  if(!S.config.horasSemana) S.config.horasSemana=Array(7).fill(4);
+  if(!S.config.horasSemana)S.config.horasSemana=Array(7).fill(4);
   S.config.horasSemana[idx]=Math.max(0,parseInt(val)||0);
   saveState();
   const totalSem=S.config.horasSemana.reduce((s,h)=>s+h,0);
   const hoje=new Date().getDay();
   const el=document.querySelector('.day-total');
-  if(el) el.innerHTML=`Total da semana: <span style="color:var(--amb)">${totalSem}h</span> · Hoje: <span style="color:var(--amb)">${S.config.horasSemana[hoje]}h</span>`;
-  if(idx===hoje) renderHoje();
+  if(el)el.innerHTML=`Total da semana: <span style="color:var(--amb)">${totalSem}h</span> · Hoje: <span style="color:var(--amb)">${S.config.horasSemana[hoje]}h</span>`;
+  if(idx===hoje)renderHoje();
 }
-function updateDiscCor(id,cor){
-  const d=S.disciplinas.find(x=>x.id===id);if(!d)return;
-  d.cor=cor;saveState();renderAll();
-}
+function updateDiscCor(id,cor){const d=S.disciplinas.find(x=>x.id===id);if(!d)return;d.cor=cor;saveState();renderAll()}
 function adicionarDisciplina(){
   const nome=document.getElementById('new-disc-nome').value.trim();
   const cor=document.getElementById('new-disc-cor').value;
@@ -1451,23 +1223,14 @@ function adicionarDisciplina(){
 }
 function removerDisciplina(id){
   const d=S.disciplinas.find(x=>x.id===id);if(!d)return;
-  const msg=d.aulas.length>0
-    ?`"${d.nome}" tem ${d.aulas.length} aula(s) cadastrada(s). Remover disciplina e todas as aulas?`
-    :`Remover a disciplina "${d.nome}"?`;
+  const msg=d.aulas.length>0?`"${d.nome}" tem ${d.aulas.length} aula(s). Remover?`:`Remover "${d.nome}"?`;
   if(!confirm(msg))return;
-  if(d.aulas.length>0&&!confirm('Confirme: todos os dados desta disciplina serão apagados permanentemente.'))return;
+  if(d.aulas.length>0&&!confirm('Confirme: dados apagados permanentemente.'))return;
   S.disciplinas=S.disciplinas.filter(x=>x.id!==id);
   saveState();renderSettings();renderAll();
 }
-function usarAgenda(){
-  const total=(S.config.horasSemana||[]).reduce((s,h)=>s+h,0);
-  document.getElementById('metaHoras').value=total||24;
-  renderMeta();
-}
-function updateDiscPeso(id,val){
-  const d=S.disciplinas.find(x=>x.id===id);if(!d)return;
-  d.peso=parseInt(val)||1;saveState();renderSettings();renderAll();
-}
+function usarAgenda(){const total=(S.config.horasSemana||[]).reduce((s,h)=>s+h,0);document.getElementById('metaHoras').value=total||24;renderMeta()}
+function updateDiscPeso(id,val){const d=S.disciplinas.find(x=>x.id===id);if(!d)return;d.peso=parseInt(val)||1;saveState();renderSettings();renderAll()}
 
 function goTab(name){
   document.querySelectorAll('.tab').forEach(e=>e.classList.remove('active'));
@@ -1481,26 +1244,23 @@ function goTab(name){
   if(name==='questoes')renderQuestoes();
 }
 
-// ----------------------------------------------------------------------
-// Listener Principal de Autenticação do Firebase
-// ----------------------------------------------------------------------
+// ── AUTH STATE LISTENER ──
 auth.onAuthStateChanged(async (user) => {
   currentUser = user;
   if(user) {
+    showApp();
     setSyncState('syncing');
     await pullFirebase(false);
+    isInitializing = false;
+    renderAll();
   } else {
-    setSyncState('unconfigured', 'Faça login para salvar na nuvem');
-    renderSettings(); // Atualiza modal se estiver aberto
+    isInitializing = true;
+    showLogin();
   }
 });
 
-function init(){
-  renderAll();
-  isInitializing = false;
-}
-
-init();
+// Renderiza localmente enquanto aguarda auth
+renderAll();
 </script>
 </body>
 </html>
