@@ -20,6 +20,7 @@
   --r:8px;--r2:6px;
 }
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+svg{display:block;flex-shrink:0}
 html{font-size:13px}
 body{background:var(--bg);color:var(--tx);font-family:'Inter',sans-serif;min-height:100vh;-webkit-font-smoothing:antialiased}
 
@@ -385,7 +386,7 @@ select option{background:var(--s2)}
   <div class="sb-top">
     <div class="sb-brand">
       <div class="sb-brand-icon">
-        <svg width="11" height="11" viewBox="0 0 14 14" fill="none"><path d="M2 7h10M7 2l5 5-5 5" stroke="#09090b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <svg width="11" height="11" viewBox="0 0 14 14" fill="none" style="display:block"><path d="M2 7h10M7 2l5 5-5 5" stroke="#09090b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
       </div>
       <div class="sb-brand-text">Tracker<span> · Câmara</span></div>
     </div>
@@ -403,19 +404,19 @@ select option{background:var(--s2)}
   <!-- Navigation -->
   <nav class="sb-nav">
     <div class="nav-section">Estudo</div>
-    <button class="nav-item active" id="nav-hoje" onclick="goTab('hoje')"><svg class="nav-ic" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="12" height="11" rx="2"/><path d="M5 2v2M11 2v2M2 7h12"/><circle cx="8" cy="11" r="1" fill="currentColor" stroke="none"/></svg> Hoje</button>
-    <button class="nav-item" id="nav-meta" onclick="goTab('meta')"><svg class="nav-ic" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M2 4h12M2 8h8M2 12h10"/></svg> Plano da Semana</button>
-    <button class="nav-item" id="nav-disciplinas" onclick="goTab('disciplinas')"><svg class="nav-ic" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="12" height="4" rx="1.5"/><rect x="2" y="7" width="12" height="4" rx="1.5"/><rect x="2" y="12" width="8" height="2" rx="1"/></svg> Disciplinas</button>
+    <button class="nav-item active" id="nav-hoje" onclick="goTab('hoje')"><svg class="nav-ic" width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="12" height="11" rx="2"/><path d="M5 2v2M11 2v2M2 7h12"/><circle cx="8" cy="11" r="1" fill="currentColor" stroke="none"/></svg> Hoje</button>
+    <button class="nav-item" id="nav-meta" onclick="goTab('meta')"><svg class="nav-ic" width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M2 4h12M2 8h8M2 12h10"/></svg> Plano da Semana</button>
+    <button class="nav-item" id="nav-disciplinas" onclick="goTab('disciplinas')"><svg class="nav-ic" width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="12" height="4" rx="1.5"/><rect x="2" y="7" width="12" height="4" rx="1.5"/><rect x="2" y="12" width="8" height="2" rx="1"/></svg> Disciplinas</button>
 
     <div class="nav-section">Análise</div>
-    <button class="nav-item" id="nav-previsao" onclick="goTab('previsao')"><svg class="nav-ic" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12 L5 8 L8 9 L11 5 L14 3"/><path d="M2 14h12"/></svg> Previsão</button>
-    <button class="nav-item" id="nav-questoes" onclick="goTab('questoes')"><svg class="nav-ic" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="8" width="3" height="6" rx="1"/><rect x="6.5" y="5" width="3" height="9" rx="1"/><rect x="11" y="2" width="3" height="12" rx="1"/></svg> Questões</button>
+    <button class="nav-item" id="nav-previsao" onclick="goTab('previsao')"><svg class="nav-ic" width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12 L5 8 L8 9 L11 5 L14 3"/><path d="M2 14h12"/></svg> Previsão</button>
+    <button class="nav-item" id="nav-questoes" onclick="goTab('questoes')"><svg class="nav-ic" width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="8" width="3" height="6" rx="1"/><rect x="6.5" y="5" width="3" height="9" rx="1"/><rect x="11" y="2" width="3" height="12" rx="1"/></svg> Questões</button>
   </nav>
 
   <!-- Footer -->
   <div class="sb-footer">
-    <button class="nav-item nav-import" id="nav-importar" onclick="goTab('importar')"><svg class="nav-ic" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2v8M5 7l3 3 3-3"/><path d="M3 12h10"/></svg> Importar conteúdo</button>
-    <button class="nav-item" onclick="openSettings()" style="margin-top:2px"><svg class="nav-ic" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="8" r="2.5"/><path d="M8 1.5V3M8 13v1.5M1.5 8H3M13 8h1.5M3.4 3.4l1 1M11.6 11.6l1 1M3.4 12.6l1-1M11.6 4.4l1-1"/></svg> Configurações</button>
+    <button class="nav-item nav-import" id="nav-importar" onclick="goTab('importar')"><svg class="nav-ic" width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2v8M5 7l3 3 3-3"/><path d="M3 12h10"/></svg> Importar conteúdo</button>
+    <button class="nav-item" onclick="openSettings()" style="margin-top:2px"><svg class="nav-ic" width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="8" r="2.5"/><path d="M8 1.5V3M8 13v1.5M1.5 8H3M13 8h1.5M3.4 3.4l1 1M11.6 11.6l1 1M3.4 12.6l1-1M11.6 4.4l1-1"/></svg> Configurações</button>
 
     <!-- User chip -->
     <div class="sb-user-chip" id="sbUserChip" onclick="toggleUserDropdown()" style="margin-top:6px;padding-top:8px;border-top:1px solid var(--bd)">
@@ -424,7 +425,7 @@ select option{background:var(--s2)}
         <div class="sb-user-name" id="sbUserName">—</div>
         <div class="sb-user-role" id="sbUserEmail">—</div>
       </div>
-      <svg style="flex-shrink:0;color:var(--tx3)" width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M4 6l4 4 4-4"/></svg>
+      <svg style="flex-shrink:0;color:var(--tx3);display:block" width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M4 6l4 4 4-4"/></svg>
     </div>
 
     <!-- User dropdown -->
@@ -457,7 +458,7 @@ select option{background:var(--s2)}
   </header>
 
   <!-- Content -->
-  <main id="appMain" style="max-width:860px;margin:0 auto;padding:24px 20px;width:100%">
+  <main id="appMain" style="max-width:860px;margin:0 auto;padding:24px 20px;width:100%;flex:1">
 
 <div id="tab-hoje" class="tab active">
   <div id="saudBlock"></div>
@@ -696,7 +697,7 @@ function updateUserChip(user){
   document.getElementById('ddName').textContent = user.displayName || firstName;
   document.getElementById('ddEmail').textContent = user.email;
   if(user.photoURL){
-    avatar.innerHTML = `<img src="${user.photoURL}" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`;
+    avatar.innerHTML = `<img src="${user.photoURL}" width="24" height="24" style="width:24px;height:24px;object-fit:cover;border-radius:50%;display:block">`;
   } else {
     avatar.textContent = firstName.charAt(0).toUpperCase();
   }
