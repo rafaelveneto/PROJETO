@@ -76,31 +76,13 @@ body{background:var(--bg);color:var(--tx);font-family:'Inter',sans-serif;min-hei
 .login-footer{font-size:11px;color:var(--tx3);text-align:center;line-height:1.6}
 .login-error{margin-top:12px;font-size:12px;color:var(--re);text-align:center;min-height:16px}
 
-/* ── HEADER ── */
-header{background:rgba(9,9,11,.85);border-bottom:1px solid var(--bd);padding:0 16px;display:flex;align-items:center;gap:10px;height:48px;position:sticky;top:0;z-index:100;backdrop-filter:blur(12px)}
-.logo{display:flex;align-items:center;gap:8px;white-space:nowrap;text-decoration:none}
-.logo-icon{width:22px;height:22px;background:var(--acc);border-radius:5px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
-.logo-text{font-family:'Syne',sans-serif;font-weight:800;font-size:13px;letter-spacing:.02em;color:var(--tx)}
-.logo-text span{color:var(--tx3);font-weight:400}
-.sync-ind{display:flex;align-items:center;gap:5px;background:transparent;border:1px solid var(--bd);padding:4px 9px;border-radius:5px;cursor:pointer;transition:border-color .15s;font-size:11px;color:var(--tx3);white-space:nowrap}
-.sync-ind:hover{border-color:var(--bd2)}
+/* sync dot (still used in topbar) */
 .sync-dot{width:6px;height:6px;border-radius:50%;background:var(--tx3);flex-shrink:0}
 .sync-dot.s-synced{background:var(--gr)}
 .sync-dot.s-syncing{background:var(--yl);animation:pulse 1s infinite}
 .sync-dot.s-error{background:var(--re)}
 .sync-dot.s-unconfigured{background:var(--tx3)}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
-.hprog{flex:1;max-width:220px;min-width:100px}
-.pr{display:flex;justify-content:space-between;margin-bottom:3px}
-.pl{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--tx3)}
-.pw{background:var(--s3);border-radius:99px;height:3px;overflow:hidden}
-.pf{background:var(--acc);height:100%;border-radius:99px;transition:width .5s}
-nav{display:flex;gap:1px;margin-left:auto}
-nav button{background:none;border:none;color:var(--tx3);font-family:'Inter',sans-serif;font-size:12px;font-weight:500;padding:5px 10px;border-radius:5px;cursor:pointer;transition:all .15s;letter-spacing:-.01em}
-nav button:hover{color:var(--tx);background:var(--s2)}
-nav button.active{color:var(--tx);background:var(--s2)}
-.gear-btn{background:none;border:none;color:var(--tx3);font-size:15px;cursor:pointer;padding:4px 8px;border-radius:5px;transition:all .15s;margin-left:2px;line-height:1}
-.gear-btn:hover{color:var(--tx);background:var(--s2)}
 
 /* ── LAYOUT ── */
 main{max-width:860px;margin:0 auto;padding:24px 16px}
@@ -315,16 +297,46 @@ select option{background:var(--s2)}
   .login-box{padding:32px 24px}
   .lf-card-b,.lf-card-d{display:none}
 }
+
+/* ── USER CHIP + DROPDOWN ── */
+.user-chip{display:flex;align-items:center;gap:7px;background:transparent;border:1px solid var(--bd);padding:4px 10px 4px 6px;border-radius:99px;cursor:pointer;transition:border-color .15s;position:relative;user-select:none}
+.user-chip:hover{border-color:var(--bd2)}
+.user-avatar{width:22px;height:22px;border-radius:50%;object-fit:cover;flex-shrink:0}
+.user-avatar-fallback{width:22px;height:22px;border-radius:50%;background:var(--acc);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#09090b;flex-shrink:0}
+.user-name{font-size:12px;font-weight:500;color:var(--tx2);max-width:100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.user-dropdown{position:absolute;top:calc(100% + 8px);right:0;background:var(--s2);border:1px solid var(--bd);border-radius:8px;padding:4px;min-width:180px;z-index:200;display:none;box-shadow:0 8px 24px rgba(0,0,0,.4)}
+.user-dropdown.open{display:block}
+.user-dd-info{padding:8px 10px 8px;border-bottom:1px solid var(--bd);margin-bottom:4px}
+.user-dd-name{font-size:12px;font-weight:500;color:var(--tx);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.user-dd-email{font-size:11px;color:var(--tx3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px}
+.user-dd-item{display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:5px;font-size:12px;color:var(--tx2);cursor:pointer;transition:background .12s;width:100%;background:none;border:none;text-align:left;font-family:"Inter",sans-serif}
+.user-dd-item:hover{background:var(--s3);color:var(--tx)}
+.user-dd-item.danger{color:var(--re)}
+.user-dd-item.danger:hover{background:rgba(239,68,68,.08);color:var(--re)}
+.user-dd-sep{height:1px;background:var(--bd);margin:4px 0}
 </style>
 </head>
 <body>
+
+<script>
+  const firebaseConfig = {
+    apiKey: "AIzaSyCdjd_0Ubn1d7JFfAOX5lNjghsdMetp3vU",
+    authDomain: "aprovado-tracker.firebaseapp.com",
+    projectId: "aprovado-tracker",
+    storageBucket: "aprovado-tracker.firebasestorage.app",
+    messagingSenderId: "457948327236",
+    appId: "1:457948327236:web:7b04a9f70361807f3bbb11"
+  };
+  firebase.initializeApp(firebaseConfig);
+  const auth = firebase.auth();
+  const db = firebase.firestore();
+</script>
+
 
 <!-- ══ TELA DE LOGIN ══ -->
 <div class="login-screen" id="loginScreen">
   <div class="login-glow"></div>
   <div class="login-noise"></div>
-
-  <!-- Floating preview cards -->
   <div class="lf-card lf-card-a">
     <div class="lf-label">Progresso</div>
     <div class="lf-disc">Língua Portuguesa</div>
@@ -350,15 +362,9 @@ select option{background:var(--s2)}
     <div class="lf-bar-wrap"><div class="lf-bar-fill" style="width:43%;background:#22c55e"></div></div>
     <div class="lf-pct">43% · 8 semanas restantes</div>
   </div>
-
-  <!-- Login card -->
   <div class="login-box">
     <div class="login-wordmark">
-      <div class="login-wordmark-icon">
-        <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-          <path d="M2 7h10M7 2l5 5-5 5" stroke="#09090b" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
-        </svg>
-      </div>
+      <div class="login-wordmark-icon"><svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M2 7h10M7 2l5 5-5 5" stroke="#09090b" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
       <div class="login-wordmark-text">Tracker<span> · Câmara</span></div>
     </div>
     <div class="login-heading">Boas-vindas de volta</div>
@@ -373,46 +379,85 @@ select option{background:var(--s2)}
   </div>
 </div>
 
-<script>
-  const firebaseConfig = {
-    apiKey: "AIzaSyCdjd_0Ubn1d7JFfAOX5lNjghsdMetp3vU",
-    authDomain: "aprovado-tracker.firebaseapp.com",
-    projectId: "aprovado-tracker",
-    storageBucket: "aprovado-tracker.firebasestorage.app",
-    messagingSenderId: "457948327236",
-    appId: "1:457948327236:web:7b04a9f70361807f3bbb11"
-  };
-  firebase.initializeApp(firebaseConfig);
-  const auth = firebase.auth();
-  const db = firebase.firestore();
-</script>
-
-<header id="appHeader" style="display:none">
-  <div class="logo">
-    <div class="logo-icon">
-      <svg width="12" height="12" viewBox="0 0 14 14" fill="none">
-        <path d="M2 7h10M7 2l5 5-5 5" stroke="#09090b" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
-      </svg>
+<!-- ══ SIDEBAR ══ -->
+<aside class="sidebar" id="sidebar" style="display:none">
+  <!-- Brand -->
+  <div class="sb-top">
+    <div class="sb-brand">
+      <div class="sb-brand-icon">
+        <svg width="11" height="11" viewBox="0 0 14 14" fill="none"><path d="M2 7h10M7 2l5 5-5 5" stroke="#09090b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </div>
+      <div class="sb-brand-text">Tracker<span> · Câmara</span></div>
     </div>
-    <div class="logo-text">Tracker<span> · Câmara</span></div>
   </div>
-  <div class="sync-ind" id="syncInd" onclick="openSettings()" title="Sincronização">
-    <span class="sync-dot s-unconfigured" id="syncDot"></span>
-    <span class="sync-text" id="syncText">Conectando…</span>
-  </div>
-  <div class="hprog" id="hProg"></div>
-  <nav>
-    <button class="active" onclick="goTab('hoje')">Hoje</button>
-    <button onclick="goTab('meta')">Meta</button>
-    <button onclick="goTab('disciplinas')">Disciplinas</button>
-    <button onclick="goTab('previsao')">Previsão</button>
-    <button onclick="goTab('questoes')">Questões</button>
-    <button onclick="goTab('importar')">+ Importar</button>
-  </nav>
-  <button class="gear-btn" onclick="openSettings()" title="Configurações">⚙</button>
-</header>
 
-<main id="appMain" style="display:none">
+  <!-- Progress -->
+  <div class="sb-progress" id="sbProgress">
+    <div class="sb-prog-row">
+      <span class="sb-prog-label">Progresso geral</span>
+      <span class="sb-prog-val" id="sbProgVal">0%</span>
+    </div>
+    <div class="sb-prog-track"><div class="sb-prog-fill" id="sbProgFill" style="width:0%"></div></div>
+  </div>
+
+  <!-- Navigation -->
+  <nav class="sb-nav">
+    <div class="nav-section">Estudo</div>
+    <button class="nav-item active" id="nav-hoje" onclick="goTab('hoje')"><svg class="nav-ic" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="12" height="11" rx="2"/><path d="M5 2v2M11 2v2M2 7h12"/><circle cx="8" cy="11" r="1" fill="currentColor" stroke="none"/></svg> Hoje</button>
+    <button class="nav-item" id="nav-meta" onclick="goTab('meta')"><svg class="nav-ic" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M2 4h12M2 8h8M2 12h10"/></svg> Plano da Semana</button>
+    <button class="nav-item" id="nav-disciplinas" onclick="goTab('disciplinas')"><svg class="nav-ic" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="12" height="4" rx="1.5"/><rect x="2" y="7" width="12" height="4" rx="1.5"/><rect x="2" y="12" width="8" height="2" rx="1"/></svg> Disciplinas</button>
+
+    <div class="nav-section">Análise</div>
+    <button class="nav-item" id="nav-previsao" onclick="goTab('previsao')"><svg class="nav-ic" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12 L5 8 L8 9 L11 5 L14 3"/><path d="M2 14h12"/></svg> Previsão</button>
+    <button class="nav-item" id="nav-questoes" onclick="goTab('questoes')"><svg class="nav-ic" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="8" width="3" height="6" rx="1"/><rect x="6.5" y="5" width="3" height="9" rx="1"/><rect x="11" y="2" width="3" height="12" rx="1"/></svg> Questões</button>
+  </nav>
+
+  <!-- Footer -->
+  <div class="sb-footer">
+    <button class="nav-item nav-import" id="nav-importar" onclick="goTab('importar')"><svg class="nav-ic" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2v8M5 7l3 3 3-3"/><path d="M3 12h10"/></svg> Importar conteúdo</button>
+    <button class="nav-item" onclick="openSettings()" style="margin-top:2px"><svg class="nav-ic" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="8" r="2.5"/><path d="M8 1.5V3M8 13v1.5M1.5 8H3M13 8h1.5M3.4 3.4l1 1M11.6 11.6l1 1M3.4 12.6l1-1M11.6 4.4l1-1"/></svg> Configurações</button>
+
+    <!-- User chip -->
+    <div class="sb-user-chip" id="sbUserChip" onclick="toggleUserDropdown()" style="margin-top:6px;padding-top:8px;border-top:1px solid var(--bd)">
+      <div class="sb-user-avatar" id="sbUserAvatar">?</div>
+      <div class="sb-user-info">
+        <div class="sb-user-name" id="sbUserName">—</div>
+        <div class="sb-user-role" id="sbUserEmail">—</div>
+      </div>
+      <svg style="flex-shrink:0;color:var(--tx3)" width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M4 6l4 4 4-4"/></svg>
+    </div>
+
+    <!-- User dropdown -->
+    <div class="user-dropdown" id="userDropdown" style="bottom:calc(100% + 4px);top:auto;right:8px;left:8px">
+      <div class="user-dd-info">
+        <div class="user-dd-name" id="ddName">—</div>
+        <div class="user-dd-email" id="ddEmail">—</div>
+      </div>
+      <button class="user-dd-item" onclick="logoutFirebase();closeUserDropdown()">↩ Sair da conta</button>
+    </div>
+  </div>
+</aside>
+
+<!-- ══ OVERLAY (mobile) ══ -->
+<div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"></div>
+
+<!-- ══ APP SHELL ══ -->
+<div class="app-shell" id="appShell" style="display:none">
+
+  <!-- Top bar -->
+  <header class="app-topbar">
+    <button class="topbar-hamburger" onclick="toggleSidebar()"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" width="16" height="16"><path d="M2 4h12M2 8h12M2 12h12"/></svg></button>
+    <span class="page-title" id="pageTitle">Hoje</span>
+    <div class="tb-actions">
+      <div class="sync-pill" id="syncInd" onclick="openSettings()">
+        <span class="sync-dot s-unconfigured" id="syncDot"></span>
+        <span id="syncText">Conectando…</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- Content -->
+  <main id="appMain" style="max-width:860px;margin:0 auto;padding:24px 20px;width:100%">
 
 <div id="tab-hoje" class="tab active">
   <div id="saudBlock"></div>
@@ -559,6 +604,11 @@ select option{background:var(--s2)}
   </div>
 </div>
 
+
+
+  </main>
+</div><!-- end app-shell -->
+
 </main>
 
 <div id="modal-settings" class="modal-bg">
@@ -633,12 +683,48 @@ function setSyncState(state, msg){
 
 function showApp(){
   document.getElementById('loginScreen').classList.add('hidden');
-  document.getElementById('appHeader').style.display='flex';
-  document.getElementById('appMain').style.display='block';
+  document.getElementById('appShell').style.display='flex';
+  document.getElementById('sidebar').style.display='flex';
+}
+function updateUserChip(user){
+  if(!user) return;
+  const name = user.displayName || user.email.split('@')[0];
+  const firstName = name.split(' ')[0];
+  const avatar = document.getElementById('sbUserAvatar');
+  document.getElementById('sbUserName').textContent = firstName;
+  document.getElementById('sbUserEmail').textContent = user.email;
+  document.getElementById('ddName').textContent = user.displayName || firstName;
+  document.getElementById('ddEmail').textContent = user.email;
+  if(user.photoURL){
+    avatar.innerHTML = `<img src="${user.photoURL}" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`;
+  } else {
+    avatar.textContent = firstName.charAt(0).toUpperCase();
+  }
+}
+function toggleUserDropdown(){
+  document.getElementById('userDropdown').classList.toggle('open');
+}
+function closeUserDropdown(){
+  document.getElementById('userDropdown').classList.remove('open');
+}
+document.addEventListener('click', function(e){
+  const chip = document.getElementById('sbUserChip');
+  const dd = document.getElementById('userDropdown');
+  if(chip && !chip.contains(e.target) && !dd.contains(e.target)){
+    closeUserDropdown();
+  }
+});
+function toggleSidebar(){
+  document.getElementById('sidebar').classList.toggle('open');
+  document.getElementById('sidebarOverlay').classList.toggle('open');
+}
+function closeSidebar(){
+  document.getElementById('sidebar').classList.remove('open');
+  document.getElementById('sidebarOverlay').classList.remove('open');
 }
 function showLogin(errorMsg){
-  document.getElementById('appHeader').style.display='none';
-  document.getElementById('appMain').style.display='none';
+  document.getElementById('appShell').style.display='none';
+  document.getElementById('sidebar').style.display='none';
   document.getElementById('loginScreen').classList.remove('hidden');
   if(errorMsg) document.getElementById('loginError').textContent = errorMsg;
   else document.getElementById('loginError').textContent = '';
@@ -797,9 +883,10 @@ function renderAll(){renderHeader();renderHoje();renderMeta();renderDisciplinas(
 
 function renderHeader(){
   const{pct,done,total}=stats();
-  document.getElementById('hProg').innerHTML=`
-    <div class="pr"><span class="pl">${done}/${total} tarefas</span><span class="pl">${pct}%</span></div>
-    <div class="pw"><div class="pf" style="width:${pct}%"></div></div>`;
+  const vEl=document.getElementById('sbProgVal');
+  const fEl=document.getElementById('sbProgFill');
+  if(vEl) vEl.textContent=`${done}/${total}`;
+  if(fEl) fEl.style.width=pct+'%';
 }
 
 function renderHoje(){
@@ -1255,12 +1342,12 @@ function renderSettings(){
   let syncHtml=`
     <div class="alert-box alert-ok">✓ Sincronizado na nuvem (Firebase)</div>
     <div style="margin-bottom:8px">
-      <div style="font-size:11px;color:var(--mu);margin-bottom:4px">Conectado como</div>
+      <div style="font-size:11px;color:var(--tx3);margin-bottom:4px">Conectado como</div>
       <div class="tk-display">${currentUser?currentUser.email:'—'}</div>
     </div>
     <div class="sync-status-line">
       <span class="sync-dot s-${syncState}"></span>
-      ${syncState==='synced'?'Última sincronização: '+fmtDateTime(S.config.lastSyncAt):syncState==='syncing'?'Sincronizando…':syncState==='error'?'Erro — verifique o console':'Aguardando mudança'}
+      ${syncState==='synced'?'Última sync: '+fmtDateTime(S.config.lastSyncAt):syncState==='syncing'?'Sincronizando…':syncState==='error'?'Erro — verifique o console':'Aguardando'}
     </div>
     <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">
       <button class="btn btn-g" onclick="pullFirebase(true)">↓ Forçar Puxar</button>
@@ -1338,16 +1425,20 @@ function removerDisciplina(id){
 function usarAgenda(){const total=(S.config.horasSemana||[]).reduce((s,h)=>s+h,0);document.getElementById('metaHoras').value=total||24;renderMeta()}
 function updateDiscPeso(id,val){const d=S.disciplinas.find(x=>x.id===id);if(!d)return;d.peso=parseInt(val)||1;saveState();renderSettings();renderAll()}
 
+const PAGE_TITLES={'hoje':'Hoje','meta':'Plano da Semana','disciplinas':'Disciplinas','previsao':'Previsão de Conclusão','questoes':'Dashboard de Questões','importar':'Importar Conteúdo'};
 function goTab(name){
   document.querySelectorAll('.tab').forEach(e=>e.classList.remove('active'));
-  document.querySelectorAll('nav button').forEach(e=>e.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(e=>e.classList.remove('active'));
   document.getElementById('tab-'+name).classList.add('active');
-  const idx=['hoje','meta','disciplinas','previsao','questoes','importar'].indexOf(name);
-  document.querySelectorAll('nav button')[idx]?.classList.add('active');
+  const nb=document.getElementById('nav-'+name);
+  if(nb) nb.classList.add('active');
+  const pt=document.getElementById('pageTitle');
+  if(pt) pt.textContent=PAGE_TITLES[name]||name;
   if(name==='importar'){populateDiscDropdowns();initForm()}
   if(name==='meta')renderMeta();
   if(name==='previsao')renderPrevisao();
   if(name==='questoes')renderQuestoes();
+  closeSidebar();
 }
 
 // ── AUTH STATE LISTENER ──
@@ -1355,6 +1446,7 @@ auth.onAuthStateChanged(async (user) => {
   currentUser = user;
   if(user) {
     showApp();
+    updateUserChip(user);
     setSyncState('syncing');
     await pullFirebase(false);
     isInitializing = false;
