@@ -24,6 +24,49 @@ svg{display:block;flex-shrink:0}
 html{font-size:13px}
 body{background:var(--bg);color:var(--tx);font-family:'Inter',sans-serif;min-height:100vh;-webkit-font-smoothing:antialiased}
 
+/* ── APP SHELL & SIDEBAR (RESTORED CSS) ── */
+.app-shell { display: flex; min-height: 100vh; width: 100%; background: var(--bg); }
+.sidebar { width: 240px; background: var(--s1); border-right: 1px solid var(--bd); display: flex; flex-direction: column; padding: 20px 16px; flex-shrink: 0; position: sticky; top: 0; height: 100vh; overflow-y: auto; }
+.sb-top { margin-bottom: 24px; }
+.sb-brand { display: flex; align-items: center; gap: 10px; }
+.sb-brand-icon { width: 26px; height: 26px; background: var(--acc); border-radius: 6px; display: flex; align-items: center; justify-content: center; }
+.sb-brand-text { font-family: 'Syne', sans-serif; font-weight: 800; font-size: 15px; color: var(--tx); }
+.sb-brand-text span { color: var(--tx3); }
+.sb-progress { margin-bottom: 24px; }
+.sb-prog-row { display: flex; justify-content: space-between; font-size: 11px; margin-bottom: 6px; }
+.sb-prog-label { color: var(--tx2); }
+.sb-prog-val { font-family: 'JetBrains Mono', monospace; font-weight: 600; color: var(--tx); }
+.sb-prog-track { height: 4px; background: var(--s3); border-radius: 99px; overflow: hidden; }
+.sb-prog-fill { height: 100%; background: var(--gr); border-radius: 99px; transition: width 0.3s; }
+.sb-nav { display: flex; flex-direction: column; gap: 4px; flex: 1; }
+.nav-section { font-size: 10px; font-weight: 600; color: var(--tx3); text-transform: uppercase; letter-spacing: 0.05em; margin: 16px 0 4px 6px; }
+.nav-item { display: flex; align-items: center; gap: 10px; width: 100%; background: transparent; border: none; color: var(--tx2); font-family: 'Inter', sans-serif; font-size: 13px; font-weight: 500; padding: 8px 12px; border-radius: 6px; cursor: pointer; transition: all 0.15s; text-align: left; }
+.nav-item:hover { background: var(--s2); color: var(--tx); }
+.nav-item.active { background: var(--acc-g); color: var(--acc); font-weight: 600; border-color: var(--acc-b); }
+.nav-ic { width: 16px; height: 16px; flex-shrink: 0; }
+.sb-footer { margin-top: auto; display: flex; flex-direction: column; gap: 8px; padding-top: 16px; }
+.sb-user-chip { display: flex; align-items: center; gap: 10px; padding: 8px; border-radius: 8px; cursor: pointer; transition: background 0.15s; position: relative; border: 1px solid transparent; }
+.sb-user-chip:hover { border-color: var(--bd); background: var(--s2); }
+.sb-user-avatar { width: 32px; height: 32px; border-radius: 50%; background: var(--s3); display: flex; align-items: center; justify-content: center; font-weight: 600; color: var(--tx); font-size: 13px; overflow: hidden; flex-shrink: 0; }
+.sb-user-info { flex: 1; min-width: 0; }
+.sb-user-name { font-size: 13px; font-weight: 600; color: var(--tx); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sb-user-role { font-size: 11px; color: var(--tx3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.app-topbar { display: flex; align-items: center; justify-content: space-between; padding: 16px 24px; border-bottom: 1px solid var(--bd); background: var(--s1); position: sticky; top: 0; z-index: 90; }
+.topbar-hamburger { display: none; background: transparent; border: none; color: var(--tx); cursor: pointer; padding: 4px; }
+.page-title { font-size: 16px; font-weight: 600; color: var(--tx); }
+.tb-actions { display: flex; align-items: center; gap: 12px; }
+.sync-pill { display: flex; align-items: center; gap: 8px; background: var(--s2); border: 1px solid var(--bd); padding: 5px 12px; border-radius: 99px; font-size: 11px; font-weight: 500; color: var(--tx2); cursor: pointer; transition: border-color 0.15s; }
+.sync-pill:hover { border-color: var(--bd2); }
+.sidebar-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 99; display: none; backdrop-filter: blur(2px); }
+.sidebar-overlay.open { display: block; }
+
+@media (max-width: 768px) {
+  .sidebar { position: fixed; left: 0; top: 0; bottom: 0; transform: translateX(-100%); transition: transform 0.3s ease; z-index: 100; box-shadow: 4px 0 24px rgba(0,0,0,0.5); }
+  .sidebar.open { transform: translateX(0); }
+  .topbar-hamburger { display: block; }
+  .app-topbar { padding: 12px 16px; }
+}
+
 /* ── TYPE TAGS ── */
 .ty-TEORIA{color:#60a5fa;background:rgba(59,130,246,.08);border-color:rgba(59,130,246,.2)}
 .ty-LEI_SECA{color:#22c55e;background:rgba(34,197,94,.08);border-color:rgba(34,197,94,.2)}
@@ -40,10 +83,8 @@ body{background:var(--bg);color:var(--tx);font-family:'Inter',sans-serif;min-hei
 
 .login-screen{position:fixed;inset:0;background:var(--bg);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px;overflow:hidden}
 .login-screen.hidden{display:none}
-
 .login-glow{position:absolute;width:600px;height:600px;border-radius:50%;background:radial-gradient(circle,rgba(245,166,35,.06) 0%,transparent 65%);top:50%;left:50%;transform:translate(-50%,-50%);pointer-events:none}
 .login-noise{position:absolute;inset:0;opacity:.025;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");pointer-events:none}
-
 .lf-card{position:absolute;background:rgba(24,24,27,.7);border:1px solid rgba(255,255,255,.06);border-radius:10px;padding:12px 14px;backdrop-filter:blur(4px);pointer-events:none;user-select:none}
 .lf-card-a{width:200px;top:15%;left:6%;animation:floatA 7s ease-in-out infinite;opacity:.45}
 .lf-card-b{width:180px;top:20%;right:5%;animation:floatB 9s ease-in-out infinite;opacity:.4}
@@ -77,7 +118,7 @@ body{background:var(--bg);color:var(--tx);font-family:'Inter',sans-serif;min-hei
 .login-footer{font-size:11px;color:var(--tx3);text-align:center;line-height:1.6}
 .login-error{margin-top:12px;font-size:12px;color:var(--re);text-align:center;min-height:16px}
 
-/* sync dot (still used in topbar) */
+/* sync dot */
 .sync-dot{width:6px;height:6px;border-radius:50%;background:var(--tx3);flex-shrink:0}
 .sync-dot.s-synced{background:var(--gr)}
 .sync-dot.s-syncing{background:var(--yl);animation:pulse 1s infinite}
@@ -85,8 +126,7 @@ body{background:var(--bg);color:var(--tx);font-family:'Inter',sans-serif;min-hei
 .sync-dot.s-unconfigured{background:var(--tx3)}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
 
-/* ── LAYOUT ── */
-main{max-width:860px;margin:0 auto;padding:24px 16px}
+/* ── LAYOUT CONTENT ── */
 .tab{display:none}.tab.active{display:block}
 
 /* ── STAT CARDS ── */
@@ -282,13 +322,14 @@ select option{background:var(--s2)}
 /* ── HERO ── */
 .greet-area{margin-bottom:20px}
 
+/* ── MOBILE OVERRIDES ── */
 @media(max-width:680px){
   .sg{grid-template-columns:1fr 1fr}.tg{grid-template-columns:1fr 1fr}
   .fg2{grid-template-columns:1fr}
   .hprog{display:none}
   nav button{padding:5px 7px;font-size:11px}
   header{padding:0 10px;gap:6px}
-  main{padding:16px 12px}
+  main{padding:16px 12px !important;}
   .pv-grid{grid-template-columns:1fr 1fr}
   .sync-ind .sync-text{display:none}
   .q-disc-head{grid-template-columns:12px 1fr 55px 90px 36px}
@@ -299,12 +340,7 @@ select option{background:var(--s2)}
   .lf-card-b,.lf-card-d{display:none}
 }
 
-/* ── USER CHIP + DROPDOWN ── */
-.user-chip{display:flex;align-items:center;gap:7px;background:transparent;border:1px solid var(--bd);padding:4px 10px 4px 6px;border-radius:99px;cursor:pointer;transition:border-color .15s;position:relative;user-select:none}
-.user-chip:hover{border-color:var(--bd2)}
-.user-avatar{width:22px;height:22px;border-radius:50%;object-fit:cover;flex-shrink:0}
-.user-avatar-fallback{width:22px;height:22px;border-radius:50%;background:var(--acc);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#09090b;flex-shrink:0}
-.user-name{font-size:12px;font-weight:500;color:var(--tx2);max-width:100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+/* ── USER DROPDOWN ── */
 .user-dropdown{position:absolute;top:calc(100% + 8px);right:0;background:var(--s2);border:1px solid var(--bd);border-radius:8px;padding:4px;min-width:180px;z-index:200;display:none;box-shadow:0 8px 24px rgba(0,0,0,.4)}
 .user-dropdown.open{display:block}
 .user-dd-info{padding:8px 10px 8px;border-bottom:1px solid var(--bd);margin-bottom:4px}
@@ -314,7 +350,6 @@ select option{background:var(--s2)}
 .user-dd-item:hover{background:var(--s3);color:var(--tx)}
 .user-dd-item.danger{color:var(--re)}
 .user-dd-item.danger:hover{background:rgba(239,68,68,.08);color:var(--re)}
-.user-dd-sep{height:1px;background:var(--bd);margin:4px 0}
 </style>
 </head>
 <body>
@@ -333,8 +368,6 @@ select option{background:var(--s2)}
   const db = firebase.firestore();
 </script>
 
-
-<!-- ══ TELA DE LOGIN ══ -->
 <div class="login-screen" id="loginScreen">
   <div class="login-glow"></div>
   <div class="login-noise"></div>
@@ -380,239 +413,223 @@ select option{background:var(--s2)}
   </div>
 </div>
 
-<!-- ══ SIDEBAR ══ -->
-<aside class="sidebar" id="sidebar" style="display:none">
-  <!-- Brand -->
-  <div class="sb-top">
-    <div class="sb-brand">
-      <div class="sb-brand-icon">
-        <svg width="11" height="11" viewBox="0 0 14 14" fill="none" style="display:block"><path d="M2 7h10M7 2l5 5-5 5" stroke="#09090b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-      </div>
-      <div class="sb-brand-text">Tracker<span> · Câmara</span></div>
-    </div>
-  </div>
-
-  <!-- Progress -->
-  <div class="sb-progress" id="sbProgress">
-    <div class="sb-prog-row">
-      <span class="sb-prog-label">Progresso geral</span>
-      <span class="sb-prog-val" id="sbProgVal">0%</span>
-    </div>
-    <div class="sb-prog-track"><div class="sb-prog-fill" id="sbProgFill" style="width:0%"></div></div>
-  </div>
-
-  <!-- Navigation -->
-  <nav class="sb-nav">
-    <div class="nav-section">Estudo</div>
-    <button class="nav-item active" id="nav-hoje" onclick="goTab('hoje')"><svg class="nav-ic" width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="12" height="11" rx="2"/><path d="M5 2v2M11 2v2M2 7h12"/><circle cx="8" cy="11" r="1" fill="currentColor" stroke="none"/></svg> Hoje</button>
-    <button class="nav-item" id="nav-meta" onclick="goTab('meta')"><svg class="nav-ic" width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M2 4h12M2 8h8M2 12h10"/></svg> Plano da Semana</button>
-    <button class="nav-item" id="nav-disciplinas" onclick="goTab('disciplinas')"><svg class="nav-ic" width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="12" height="4" rx="1.5"/><rect x="2" y="7" width="12" height="4" rx="1.5"/><rect x="2" y="12" width="8" height="2" rx="1"/></svg> Disciplinas</button>
-
-    <div class="nav-section">Análise</div>
-    <button class="nav-item" id="nav-previsao" onclick="goTab('previsao')"><svg class="nav-ic" width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12 L5 8 L8 9 L11 5 L14 3"/><path d="M2 14h12"/></svg> Previsão</button>
-    <button class="nav-item" id="nav-questoes" onclick="goTab('questoes')"><svg class="nav-ic" width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="8" width="3" height="6" rx="1"/><rect x="6.5" y="5" width="3" height="9" rx="1"/><rect x="11" y="2" width="3" height="12" rx="1"/></svg> Questões</button>
-  </nav>
-
-  <!-- Footer -->
-  <div class="sb-footer">
-    <button class="nav-item nav-import" id="nav-importar" onclick="goTab('importar')"><svg class="nav-ic" width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2v8M5 7l3 3 3-3"/><path d="M3 12h10"/></svg> Importar conteúdo</button>
-    <button class="nav-item" onclick="openSettings()" style="margin-top:2px"><svg class="nav-ic" width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="8" r="2.5"/><path d="M8 1.5V3M8 13v1.5M1.5 8H3M13 8h1.5M3.4 3.4l1 1M11.6 11.6l1 1M3.4 12.6l1-1M11.6 4.4l1-1"/></svg> Configurações</button>
-
-    <!-- User chip -->
-    <div class="sb-user-chip" id="sbUserChip" onclick="toggleUserDropdown()" style="margin-top:6px;padding-top:8px;border-top:1px solid var(--bd)">
-      <div class="sb-user-avatar" id="sbUserAvatar">?</div>
-      <div class="sb-user-info">
-        <div class="sb-user-name" id="sbUserName">—</div>
-        <div class="sb-user-role" id="sbUserEmail">—</div>
-      </div>
-      <svg style="flex-shrink:0;color:var(--tx3);display:block" width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M4 6l4 4 4-4"/></svg>
-    </div>
-
-    <!-- User dropdown -->
-    <div class="user-dropdown" id="userDropdown" style="bottom:calc(100% + 4px);top:auto;right:8px;left:8px">
-      <div class="user-dd-info">
-        <div class="user-dd-name" id="ddName">—</div>
-        <div class="user-dd-email" id="ddEmail">—</div>
-      </div>
-      <button class="user-dd-item" onclick="logoutFirebase();closeUserDropdown()">↩ Sair da conta</button>
-    </div>
-  </div>
-</aside>
-
-<!-- ══ OVERLAY (mobile) ══ -->
-<div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"></div>
-
-<!-- ══ APP SHELL ══ -->
 <div class="app-shell" id="appShell" style="display:none">
 
-  <!-- Top bar -->
-  <header class="app-topbar">
-    <button class="topbar-hamburger" onclick="toggleSidebar()"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" width="16" height="16"><path d="M2 4h12M2 8h12M2 12h12"/></svg></button>
-    <span class="page-title" id="pageTitle">Hoje</span>
-    <div class="tb-actions">
-      <div class="sync-pill" id="syncInd" onclick="openSettings()">
-        <span class="sync-dot s-unconfigured" id="syncDot"></span>
-        <span id="syncText">Conectando…</span>
+  <aside class="sidebar" id="sidebar">
+    <div class="sb-top">
+      <div class="sb-brand">
+        <div class="sb-brand-icon">
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" style="display:block"><path d="M2 7h10M7 2l5 5-5 5" stroke="#09090b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </div>
+        <div class="sb-brand-text">Tracker<span> · Câmara</span></div>
       </div>
     </div>
-  </header>
 
-  <!-- Content -->
-  <main id="appMain" style="max-width:860px;margin:0 auto;padding:24px 20px;width:100%;flex:1">
-
-<div id="tab-hoje" class="tab active">
-  <div id="saudBlock"></div>
-  <div class="sg" id="statsGrid"></div>
-  <div class="tg" id="typeGrid"></div>
-  <div class="card">
-    <div class="ct">⚡ Foco de Hoje</div>
-    <div id="hojeBar"></div>
-    <div id="hojeList"></div>
-  </div>
-  <div class="card" id="cardProx" style="display:none">
-    <div class="ct">🔜 Na Fila</div>
-    <div id="proxList"></div>
-  </div>
-</div>
-
-<div id="tab-meta" class="tab">
-  <div class="sh">
-    <div class="stit">Meta da Semana</div>
-    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-      <span class="meta-label">Horas disponíveis:</span>
-      <input type="number" id="metaHoras" class="hrs-input" value="24" min="1" max="80">
-      <button class="btn btn-g" onclick="usarAgenda()" title="Preencher com total da sua agenda semanal">📅 Agenda</button>
-      <button class="btn btn-p" onclick="renderMeta()">Gerar plano ↻</button>
+    <div class="sb-progress" id="sbProgress">
+      <div class="sb-prog-row">
+        <span class="sb-prog-label">Progresso geral</span>
+        <span class="sb-prog-val" id="sbProgVal">0%</span>
+      </div>
+      <div class="sb-prog-track"><div class="sb-prog-fill" id="sbProgFill" style="width:0%"></div></div>
     </div>
-  </div>
-  <div id="metaContent"></div>
-</div>
 
-<div id="tab-disciplinas" class="tab">
-  <div class="sh">
-    <div class="stit">Disciplinas</div>
-    <div style="display:flex;gap:8px;flex-wrap:wrap">
-      <button class="btn btn-g" onclick="exportar()">↓ Exportar JSON</button>
-      <label class="btn btn-g" style="cursor:pointer">
-        ↑ Importar JSON
-        <input type="file" accept=".json" style="display:none" onchange="importarBackup(this)">
-      </label>
-      <button class="btn btn-s" style="color:var(--re)" onclick="resetarProgresso()">↺ Reset</button>
-    </div>
-  </div>
-  <div id="discList"></div>
-</div>
+    <nav class="sb-nav">
+      <div class="nav-section">Estudo</div>
+      <button class="nav-item active" id="nav-hoje" onclick="goTab('hoje')"><svg class="nav-ic" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="12" height="11" rx="2"/><path d="M5 2v2M11 2v2M2 7h12"/><circle cx="8" cy="11" r="1" fill="currentColor" stroke="none"/></svg> Hoje</button>
+      <button class="nav-item" id="nav-meta" onclick="goTab('meta')"><svg class="nav-ic" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M2 4h12M2 8h8M2 12h10"/></svg> Plano da Semana</button>
+      <button class="nav-item" id="nav-disciplinas" onclick="goTab('disciplinas')"><svg class="nav-ic" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="12" height="4" rx="1.5"/><rect x="2" y="7" width="12" height="4" rx="1.5"/><rect x="2" y="12" width="8" height="2" rx="1"/></svg> Disciplinas</button>
 
-<div id="tab-previsao" class="tab">
-  <div class="sh">
-    <div class="stit">Previsão de Conclusão</div>
-    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-      <span class="meta-label">h/dia</span>
-      <input type="number" id="pvHoras" class="hrs-input" style="width:55px;font-size:15px" value="4" min="1" max="12" oninput="renderPrevisao()">
-      <span class="meta-label">dias/sem</span>
-      <input type="number" id="pvDias" class="hrs-input" style="width:55px;font-size:15px" value="6" min="1" max="7" oninput="renderPrevisao()">
-    </div>
-  </div>
-  <div id="previsaoContent"></div>
-</div>
+      <div class="nav-section">Análise</div>
+      <button class="nav-item" id="nav-previsao" onclick="goTab('previsao')"><svg class="nav-ic" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12 L5 8 L8 9 L11 5 L14 3"/><path d="M2 14h12"/></svg> Previsão</button>
+      <button class="nav-item" id="nav-questoes" onclick="goTab('questoes')"><svg class="nav-ic" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="8" width="3" height="6" rx="1"/><rect x="6.5" y="5" width="3" height="9" rx="1"/><rect x="11" y="2" width="3" height="12" rx="1"/></svg> Questões</button>
+    </nav>
 
-<div id="tab-questoes" class="tab">
-  <div class="sh" style="margin-bottom:10px">
-    <div class="stit">Dashboard de Questões</div>
-    <span id="qInfoLabel" style="font-size:11px;color:var(--mu)"></span>
-  </div>
-  <div class="q-filter-bar">
-    <span class="meta-label">Período de Análise:</span>
-    <select id="qPeriodSelect" style="width:auto;font-size:13px;font-weight:600" onchange="qPeriod=this.value;renderQuestoes()">
-      <option value="30">Últimos 30 dias</option>
-      <option value="90">Últimos 3 meses</option>
-      <option value="180">Últimos 6 meses</option>
-      <option value="all" selected>Todo o Histórico</option>
-    </select>
-    <span class="meta-label" style="margin-left:14px">Mín. de questões:</span>
-    <input type="number" id="qMinQ" value="1" min="0" max="500" class="hrs-input" style="width:60px;font-size:14px" oninput="qMinQ=parseInt(this.value)||0;renderQuestoes()">
-    <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--mu);cursor:pointer;margin-left:6px">
-      <input type="checkbox" style="width:auto" id="qShowAllCheck" onchange="qShowAll=this.checked;renderQuestoes()"> Ver todas matérias
-    </label>
-  </div>
-  <div class="chart-container" style="display:none" id="qChartBox">
-    <canvas id="qChart"></canvas>
-  </div>
-  <div id="questoesContent"></div>
-</div>
+    <div class="sb-footer">
+      <button class="nav-item nav-import" id="nav-importar" onclick="goTab('importar')"><svg class="nav-ic" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2v8M5 7l3 3 3-3"/><path d="M3 12h10"/></svg> Importar conteúdo</button>
+      <button class="nav-item" onclick="openSettings()"><svg class="nav-ic" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="8" r="2.5"/><path d="M8 1.5V3M8 13v1.5M1.5 8H3M13 8h1.5M3.4 3.4l1 1M11.6 11.6l1 1M3.4 12.6l1-1M11.6 4.4l1-1"/></svg> Configurações</button>
 
-<div id="tab-importar" class="tab">
-  <div class="stit" style="margin-bottom:6px">Importar Conteúdo</div>
-  <div style="font-size:12px;color:var(--mu);margin-bottom:18px">Cole o output do NotebookLM, preencha manualmente, ou faça upload do xlsx do TecConcursos.</div>
-  <div class="imp-tabs">
-    <button class="imp-tab active" onclick="switchImp('nlm',this)">📋 Colar NotebookLM</button>
-    <button class="imp-tab" onclick="switchImp('form',this)">✏️ Formulário</button>
-    <button class="imp-tab" onclick="switchImp('xlsx',this)">📊 Estatísticas TecConcursos</button>
-  </div>
-  <div id="imp-nlm" class="imp-panel active">
-    <div class="card">
-      <div class="ct">Identificação</div>
-      <div class="fg2">
-        <div class="fg"><label>Disciplina</label><select id="nlm-disc"></select></div>
-        <div class="fg"><label>Código da Aula</label><input id="nlm-cod" placeholder="Ex: Aula 03"></div>
-        <div class="fg full"><label>Título</label><input id="nlm-tit" placeholder="Ex: Plenário – Sessões"></div>
+      <div class="sb-user-chip" id="sbUserChip" onclick="toggleUserDropdown()">
+        <div class="sb-user-avatar" id="sbUserAvatar">?</div>
+        <div class="sb-user-info">
+          <div class="sb-user-name" id="sbUserName">—</div>
+          <div class="sb-user-role" id="sbUserEmail">—</div>
+        </div>
+        <svg style="flex-shrink:0;color:var(--tx3);" width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M4 6l4 4 4-4"/></svg>
+      </div>
+
+      <div class="user-dropdown" id="userDropdown" style="bottom:calc(100% + 4px);top:auto;right:8px;left:8px">
+        <div class="user-dd-info">
+          <div class="user-dd-name" id="ddName">—</div>
+          <div class="user-dd-email" id="ddEmail">—</div>
+        </div>
+        <button class="user-dd-item" onclick="logoutFirebase();closeUserDropdown()">↩ Sair da conta</button>
       </div>
     </div>
-    <div class="card">
-      <div class="ct">Output do NotebookLM</div>
-      <textarea id="nlm-txt" style="min-height:160px;font-family:monospace;font-size:11px" placeholder="Cole aqui o texto completo gerado pelo NotebookLM..."></textarea>
-      <div style="margin-top:10px;display:flex;gap:8px">
-        <button class="btn btn-p" onclick="parsearNLM()">🔍 Parsear</button>
-        <button class="btn btn-g" onclick="document.getElementById('nlm-txt').value=''">Limpar</button>
+  </aside>
+
+  <div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"></div>
+
+  <div style="display:flex; flex-direction:column; flex:1; min-width:0;">
+    <header class="app-topbar">
+      <button class="topbar-hamburger" onclick="toggleSidebar()"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" width="16" height="16"><path d="M2 4h12M2 8h12M2 12h12"/></svg></button>
+      <span class="page-title" id="pageTitle">Hoje</span>
+      <div class="tb-actions">
+        <div class="sync-pill" id="syncInd" onclick="openSettings()">
+          <span class="sync-dot s-unconfigured" id="syncDot"></span>
+          <span id="syncText">Conectando…</span>
+        </div>
       </div>
-      <div id="nlm-preview"></div>
-    </div>
+    </header>
+
+    <main id="appMain" style="max-width:860px; margin:0 auto; padding:24px 20px; width:100%;">
+
+      <div id="tab-hoje" class="tab active">
+        <div id="saudBlock"></div>
+        <div class="sg" id="statsGrid"></div>
+        <div class="tg" id="typeGrid"></div>
+        <div class="card">
+          <div class="ct">⚡ Foco de Hoje</div>
+          <div id="hojeBar"></div>
+          <div id="hojeList"></div>
+        </div>
+        <div class="card" id="cardProx" style="display:none">
+          <div class="ct">🔜 Na Fila</div>
+          <div id="proxList"></div>
+        </div>
+      </div>
+
+      <div id="tab-meta" class="tab">
+        <div class="sh">
+          <div class="stit">Meta da Semana</div>
+          <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+            <span class="meta-label">Horas disponíveis:</span>
+            <input type="number" id="metaHoras" class="hrs-input" value="24" min="1" max="80">
+            <button class="btn btn-g" onclick="usarAgenda()" title="Preencher com total da sua agenda semanal">📅 Agenda</button>
+            <button class="btn btn-p" onclick="renderMeta()">Gerar plano ↻</button>
+          </div>
+        </div>
+        <div id="metaContent"></div>
+      </div>
+
+      <div id="tab-disciplinas" class="tab">
+        <div class="sh">
+          <div class="stit">Disciplinas</div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <button class="btn btn-g" onclick="exportar()">↓ Exportar JSON</button>
+            <label class="btn btn-g" style="cursor:pointer">
+              ↑ Importar JSON
+              <input type="file" accept=".json" style="display:none" onchange="importarBackup(this)">
+            </label>
+            <button class="btn btn-s" style="color:var(--re)" onclick="resetarProgresso()">↺ Reset</button>
+          </div>
+        </div>
+        <div id="discList"></div>
+      </div>
+
+      <div id="tab-previsao" class="tab">
+        <div class="sh">
+          <div class="stit">Previsão de Conclusão</div>
+          <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+            <span class="meta-label">h/dia</span>
+            <input type="number" id="pvHoras" class="hrs-input" style="width:55px;font-size:15px" value="4" min="1" max="12" oninput="renderPrevisao()">
+            <span class="meta-label">dias/sem</span>
+            <input type="number" id="pvDias" class="hrs-input" style="width:55px;font-size:15px" value="6" min="1" max="7" oninput="renderPrevisao()">
+          </div>
+        </div>
+        <div id="previsaoContent"></div>
+      </div>
+
+      <div id="tab-questoes" class="tab">
+        <div class="sh" style="margin-bottom:10px">
+          <div class="stit">Dashboard de Questões</div>
+          <span id="qInfoLabel" style="font-size:11px;color:var(--mu)"></span>
+        </div>
+        <div class="q-filter-bar">
+          <span class="meta-label">Período de Análise:</span>
+          <select id="qPeriodSelect" style="width:auto;font-size:13px;font-weight:600" onchange="qPeriod=this.value;renderQuestoes()">
+            <option value="30">Últimos 30 dias</option>
+            <option value="90">Últimos 3 meses</option>
+            <option value="180">Últimos 6 meses</option>
+            <option value="all" selected>Todo o Histórico</option>
+          </select>
+          <span class="meta-label" style="margin-left:14px">Mín. de questões:</span>
+          <input type="number" id="qMinQ" value="1" min="0" max="500" class="hrs-input" style="width:60px;font-size:14px" oninput="qMinQ=parseInt(this.value)||0;renderQuestoes()">
+          <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--mu);cursor:pointer;margin-left:6px">
+            <input type="checkbox" style="width:auto" id="qShowAllCheck" onchange="qShowAll=this.checked;renderQuestoes()"> Ver todas matérias
+          </label>
+        </div>
+        <div class="chart-container" style="display:none" id="qChartBox">
+          <canvas id="qChart"></canvas>
+        </div>
+        <div id="questoesContent"></div>
+      </div>
+
+      <div id="tab-importar" class="tab">
+        <div class="stit" style="margin-bottom:6px">Importar Conteúdo</div>
+        <div style="font-size:12px;color:var(--mu);margin-bottom:18px">Cole o output do NotebookLM, preencha manualmente, ou faça upload do xlsx do TecConcursos.</div>
+        <div class="imp-tabs">
+          <button class="imp-tab active" onclick="switchImp('nlm',this)">📋 Colar NotebookLM</button>
+          <button class="imp-tab" onclick="switchImp('form',this)">✏️ Formulário</button>
+          <button class="imp-tab" onclick="switchImp('xlsx',this)">📊 Estatísticas TecConcursos</button>
+        </div>
+        <div id="imp-nlm" class="imp-panel active">
+          <div class="card">
+            <div class="ct">Identificação</div>
+            <div class="fg2">
+              <div class="fg"><label>Disciplina</label><select id="nlm-disc"></select></div>
+              <div class="fg"><label>Código da Aula</label><input id="nlm-cod" placeholder="Ex: Aula 03"></div>
+              <div class="fg full"><label>Título</label><input id="nlm-tit" placeholder="Ex: Plenário – Sessões"></div>
+            </div>
+          </div>
+          <div class="card">
+            <div class="ct">Output do NotebookLM</div>
+            <textarea id="nlm-txt" style="min-height:160px;font-family:monospace;font-size:11px" placeholder="Cole aqui o texto completo gerado pelo NotebookLM..."></textarea>
+            <div style="margin-top:10px;display:flex;gap:8px">
+              <button class="btn btn-p" onclick="parsearNLM()">🔍 Parsear</button>
+              <button class="btn btn-g" onclick="document.getElementById('nlm-txt').value=''">Limpar</button>
+            </div>
+            <div id="nlm-preview"></div>
+          </div>
+        </div>
+        <div id="imp-form" class="imp-panel">
+          <div class="card">
+            <div class="ct">Identificação</div>
+            <div class="fg2">
+              <div class="fg"><label>Disciplina</label><select id="f-disc"></select></div>
+              <div class="fg"><label>Código</label><input id="f-cod" placeholder="Ex: Aula 03"></div>
+              <div class="fg full"><label>Título</label><input id="f-tit"></div>
+            </div>
+          </div>
+          <div class="card">
+            <div class="ct">Tarefas</div>
+            <div id="tfList"></div>
+            <button class="btn btn-g" onclick="addTF()">+ Tarefa</button>
+          </div>
+          <div style="display:flex;gap:10px;justify-content:flex-end">
+            <button class="btn btn-g" onclick="goTab('disciplinas')">Cancelar</button>
+            <button class="btn btn-p" onclick="salvarManual()">✔ Salvar</button>
+          </div>
+        </div>
+        <div id="imp-xlsx" class="imp-panel">
+          <div class="card">
+            <div class="ct">Importar estatística do TecConcursos</div>
+            <div class="alert-box alert-info">
+              <strong>Como obter o arquivo:</strong> No TecConcursos, vá em Estatísticas → Atividades → clique no botão de download (ícone de planilha) para baixar o xlsx com seus dados detalhados por tópico.<br>
+              <em>Dica: Exporte e importe suas estatísticas periodicamente (ex: a cada 15 dias). O sistema guardará o histórico para construir o gráfico da sua evolução.</em>
+            </div>
+            <div class="fg2">
+              <div class="fg full"><label>Rótulo deste import (Ex: "Simulado de Maio")</label>
+                <input id="xls-label" placeholder="Deixe em branco para usar a data de hoje"></div>
+              <div class="fg full"><label>Arquivo xlsx</label>
+                <input id="xls-file" type="file" accept=".xlsx,.xls" onchange="lerXlsx(this)"></div>
+            </div>
+            <div id="xls-preview" style="margin-top:14px"></div>
+          </div>
+        </div>
+      </div>
+    </main>
   </div>
-  <div id="imp-form" class="imp-panel">
-    <div class="card">
-      <div class="ct">Identificação</div>
-      <div class="fg2">
-        <div class="fg"><label>Disciplina</label><select id="f-disc"></select></div>
-        <div class="fg"><label>Código</label><input id="f-cod" placeholder="Ex: Aula 03"></div>
-        <div class="fg full"><label>Título</label><input id="f-tit"></div>
-      </div>
-    </div>
-    <div class="card">
-      <div class="ct">Tarefas</div>
-      <div id="tfList"></div>
-      <button class="btn btn-g" onclick="addTF()">+ Tarefa</button>
-    </div>
-    <div style="display:flex;gap:10px;justify-content:flex-end">
-      <button class="btn btn-g" onclick="goTab('disciplinas')">Cancelar</button>
-      <button class="btn btn-p" onclick="salvarManual()">✔ Salvar</button>
-    </div>
-  </div>
-  <div id="imp-xlsx" class="imp-panel">
-    <div class="card">
-      <div class="ct">Importar estatística do TecConcursos</div>
-      <div class="alert-box alert-info">
-        <strong>Como obter o arquivo:</strong> No TecConcursos, vá em Estatísticas → Atividades → clique no botão de download (ícone de planilha) para baixar o xlsx com seus dados detalhados por tópico.<br>
-        <em>Dica: Exporte e importe suas estatísticas periodicamente (ex: a cada 15 dias). O sistema guardará o histórico para construir o gráfico da sua evolução.</em>
-      </div>
-      <div class="fg2">
-        <div class="fg full"><label>Rótulo deste import (Ex: "Simulado de Maio")</label>
-          <input id="xls-label" placeholder="Deixe em branco para usar a data de hoje"></div>
-        <div class="fg full"><label>Arquivo xlsx</label>
-          <input id="xls-file" type="file" accept=".xlsx,.xls" onchange="lerXlsx(this)"></div>
-      </div>
-      <div id="xls-preview" style="margin-top:14px"></div>
-    </div>
-  </div>
-</div>
-
-
-
-  </main>
-</div><!-- end app-shell -->
-
-</main>
-
-<div id="modal-settings" class="modal-bg">
+</div><div id="modal-settings" class="modal-bg">
   <div class="modal">
     <button class="modal-close" onclick="closeSettings()">✕</button>
     <h3>Configurações</h3>
@@ -685,7 +702,6 @@ function setSyncState(state, msg){
 function showApp(){
   document.getElementById('loginScreen').classList.add('hidden');
   document.getElementById('appShell').style.display='flex';
-  document.getElementById('sidebar').style.display='flex';
 }
 function updateUserChip(user){
   if(!user) return;
@@ -697,7 +713,7 @@ function updateUserChip(user){
   document.getElementById('ddName').textContent = user.displayName || firstName;
   document.getElementById('ddEmail').textContent = user.email;
   if(user.photoURL){
-    avatar.innerHTML = `<img src="${user.photoURL}" width="24" height="24" style="width:24px;height:24px;object-fit:cover;border-radius:50%;display:block">`;
+    avatar.innerHTML = `<img src="${user.photoURL}" width="32" height="32" style="width:32px;height:32px;object-fit:cover;border-radius:50%;display:block">`;
   } else {
     avatar.textContent = firstName.charAt(0).toUpperCase();
   }
@@ -725,7 +741,6 @@ function closeSidebar(){
 }
 function showLogin(errorMsg){
   document.getElementById('appShell').style.display='none';
-  document.getElementById('sidebar').style.display='none';
   document.getElementById('loginScreen').classList.remove('hidden');
   if(errorMsg) document.getElementById('loginError').textContent = errorMsg;
   else document.getElementById('loginError').textContent = '';
