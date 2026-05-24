@@ -3,10 +3,15 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>APROVADO · Tracker</title>
+<title>APROVADO · Tracker Multi-usuário</title>
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;700;800&family=JetBrains+Mono:wght@400;600&family=DM+Sans:wght@400;500&display=swap" rel="stylesheet">
+
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore-compat.js"></script>
+
 <style>
 :root{
   --bg:#0c0f14;--s1:#13181f;--s2:#1a2030;--s3:#212b3a;--bd:#2a3547;
@@ -227,11 +232,26 @@ select option{background:var(--s2)}
 </head>
 <body>
 
+<script>
+  const firebaseConfig = {
+  apiKey: "AIzaSyCdjd_0Ubn1d7JFfAOX5lNjghsdMetp3vU",
+  authDomain: "aprovado-tracker.firebaseapp.com",
+  projectId: "aprovado-tracker",
+  storageBucket: "aprovado-tracker.firebasestorage.app",
+  messagingSenderId: "457948327236",
+  appId: "1:457948327236:web:7b04a9f70361807f3bbb11"
+};
+
+  // Inicializa o Firebase
+  firebase.initializeApp(firebaseConfig);
+  const auth = firebase.auth();
+  const db = firebase.firestore();
+</script>
 <header>
   <div class="logo">APROVADO<span>·Tracker</span></div>
   <div class="sync-ind" id="syncInd" onclick="openSettings()" title="Configurar sincronização">
     <span class="sync-dot s-unconfigured" id="syncDot"></span>
-    <span class="sync-text" id="syncText">Não conectado</span>
+    <span class="sync-text" id="syncText">Aguardando login...</span>
   </div>
   <div class="hprog" id="hProg"></div>
   <nav>
@@ -398,9 +418,9 @@ select option{background:var(--s2)}
   <div class="modal">
     <button class="modal-close" onclick="closeSettings()">✕</button>
     <h3>Configurações</h3>
-    <div class="sub">Conecte com o GitHub para sincronizar seus dados entre dispositivos.</div>
+    <div class="sub">Faça login com sua conta para acessar seu ambiente de estudos.</div>
     <div class="modal-section">
-      <div class="modal-section-title">🔄 Sincronização (GitHub Gist)</div>
+      <div class="modal-section-title">👤 Conta e Sincronização</div>
       <div id="syncSettings"></div>
     </div>
     <div class="modal-section">
@@ -426,7 +446,7 @@ const TYPES = {
 
 const TODAY_ISO = new Date().toISOString().split('T')[0];
 const SEED = {
-  config:{horasPorDia:4, diasPorSemana:6, horasSemana:[0,4,4,4,4,4,2], dataInicio:TODAY_ISO, githubToken:'', gistId:'', lastModified:Date.now(), lastSyncAt:null},
+  config:{horasPorDia:4, diasPorSemana:6, horasSemana:[0,4,4,4,4,4,2], dataInicio:TODAY_ISO, lastModified:Date.now(), lastSyncAt:null},
   disciplinas:[
     {id:'port', nome:'Língua Portuguesa',         peso:34, cor:'#3266ad', aulas:[]},
     {id:'regi', nome:'Regimento Interno + Comum', peso:29, cor:'#1D9E75', aulas:[]},
@@ -434,15 +454,15 @@ const SEED = {
     {id:'adm',  nome:'Direito Administrativo', peso:12, cor:'#D85A30', aulas:[]},
     {id:'ingl', nome:'Língua Inglesa',         peso:8,  cor:'#BA7517', aulas:[]},
   ],
-  questoes_history: [] // NOVO MODELO: Array para manter histórico de acertos
+  questoes_history: []
 };
 
 let S;
 let syncState = 'unconfigured';
 let syncTimer = null;
-let lastPushedJson = '';
 let isInitializing = true;
-let qChartInstance = null; // Instância do gráfico
+let qChartInstance = null;
+let currentUser = null; // Variável global para o Firebase Auth
 
 function loadLocal(){
   try{const r=localStorage.getItem('aprovado-v5');return r?JSON.parse(r):null}catch{return null}
@@ -464,79 +484,99 @@ function setSyncState(state, msg){
   text.textContent = labels[state] || state;
 }
 
-async function ghFetch(path, opts={}){
-  const headers = {
-    'Authorization': 'Bearer ' + S.config.githubToken,
-    'Accept': 'application/vnd.github+json',
-    'X-GitHub-Api-Version': '2022-11-28',
-    ...(opts.headers||{})
-  };
-  if(opts.body) headers['Content-Type'] = 'application/json';
-  const res = await fetch('https://api.github.com' + path, {...opts, headers});
-  if(!res.ok){
-    const errText = await res.text().catch(()=>'');
-    throw new Error('GitHub API ' + res.status + ': ' + errText.slice(0,200));
+// -----------------------------------------------------
+// FUNÇÕES DO FIREBASE (Substituíram as do GitHub)
+// -----------------------------------------------------
+async function loginFirebase() {
+  if (firebaseConfig.apiKey === "COLE_AQUI_A_SUA_API_KEY") {
+    alert("ERRO: Você precisa colar as chaves do Firebase no código-fonte primeiro!");
+    return;
   }
-  return res.json();
+  const provider = new firebase.auth.GoogleAuthProvider();
+  try {
+    await auth.signInWithPopup(provider);
+  } catch(e) {
+    alert('Erro no login: ' + e.message);
+  }
 }
 
-async function testToken(token){
-  const res = await fetch('https://api.github.com/user', {
-    headers:{'Authorization':'Bearer '+token, 'Accept':'application/vnd.github+json'}
-  });
-  if(!res.ok) throw new Error('Token inválido (HTTP '+res.status+')');
-  return res.json();
+async function logoutFirebase() {
+  if(confirm("Deseja sair da sua conta?")) {
+    await auth.signOut();
+    S = JSON.parse(JSON.stringify(SEED)); // Limpa a tela por segurança
+    saveLocal();
+    renderAll();
+  }
 }
 
-async function createGist(){
-  const safeData = JSON.parse(JSON.stringify(S));
-  safeData.config.githubToken = ''; 
-
-  const data = await ghFetch('/gists', {
-    method:'POST',
-    body: JSON.stringify({
-      description:'APROVADO Tracker — dados de estudo',
-      public:false,
-      files:{'aprovado-data.json':{content: JSON.stringify(safeData, null, 2)}}
-    })
-  });
-  return data.id;
+async function pullFirebase(force = false) {
+  if (!currentUser) return;
+  try {
+    setSyncState('syncing');
+    const docRef = db.collection('usuarios').doc(currentUser.uid);
+    const docSnap = await docRef.get();
+    
+    if (docSnap.exists) {
+      const remote = docSnap.data();
+      const remoteModified = remote.config?.lastModified || 0;
+      const localModified = S.config?.lastModified || 0;
+      
+      if (force || remoteModified > localModified) {
+        S = remote;
+        if(!S.config.lastModified) S.config.lastModified = Date.now();
+        if(!S.config.horasSemana) S.config.horasSemana = Array(7).fill(S.config.horasPorDia||4);
+        if(!S.questoes_history) S.questoes_history = [];
+        
+        saveLocal();
+        renderAll();
+        if(force) alert("Dados puxados da nuvem com sucesso!");
+      }
+    } else {
+      // Primeiro login deste usuário, vamos salvar os dados base na nuvem
+      await pushFirebase();
+    }
+    setSyncState('synced');
+    renderSettings(); // Atualiza o modal se estiver aberto
+  } catch(e) {
+    setSyncState('error', 'Erro ao puxar dados: ' + e.message);
+  }
 }
 
-async function pullGist(){
-  const data = await ghFetch('/gists/' + S.config.gistId);
-  const f = data.files['aprovado-data.json'];
-  if(!f || !f.content) throw new Error('Arquivo não encontrado no Gist');
-  return JSON.parse(f.content);
+async function pushFirebase(force = false) {
+  if (!currentUser) return;
+  try {
+    setSyncState('syncing');
+    const docRef = db.collection('usuarios').doc(currentUser.uid);
+    
+    // Limpamos sujeiras legadas do GitHub se existirem no objeto S antigo
+    const safeData = JSON.parse(JSON.stringify(S));
+    if(safeData.config.githubToken !== undefined) delete safeData.config.githubToken;
+    if(safeData.config.gistId !== undefined) delete safeData.config.gistId;
+
+    await docRef.set(safeData);
+    
+    S.config.lastSyncAt = new Date().toISOString();
+    saveLocal();
+    setSyncState('synced');
+    if(force) {
+      alert("Dados enviados para a nuvem com sucesso!");
+      renderSettings();
+    }
+  } catch(e) {
+    setSyncState('error', 'Erro ao enviar: ' + e.message);
+  }
 }
 
-async function pushGist(){
-  if(!S.config.githubToken || !S.config.gistId) return;
-  
-  const safeData = JSON.parse(JSON.stringify(S));
-  safeData.config.githubToken = ''; 
-  const content = JSON.stringify(safeData, null, 2);
-  
-  if(content === lastPushedJson) return;
-  
-  await ghFetch('/gists/' + S.config.gistId, {
-    method:'PATCH',
-    body: JSON.stringify({files:{'aprovado-data.json':{content}}})
-  });
-  lastPushedJson = content;
-  S.config.lastSyncAt = new Date().toISOString();
-  saveLocal();
-}
+// -----------------------------------------------------
 
 function scheduleSync(){
-  if(!S.config.githubToken || !S.config.gistId) return;
+  if(!currentUser) return; // Só tenta sincronizar se estiver logado
   if(isInitializing) return;
   setSyncState('syncing');
   if(syncTimer) clearTimeout(syncTimer);
   syncTimer = setTimeout(async ()=>{
     try{
-      await pushGist();
-      setSyncState('synced');
+      await pushFirebase();
     }catch(e){
       console.error(e);
       setSyncState('error', e.message);
@@ -547,13 +587,11 @@ function scheduleSync(){
 function saveState(){
   S.config.lastModified = Date.now();
   saveLocal();
-  scheduleSync();
+  scheduleSync(); // Aciona o Firebase em vez do GitHub
 }
 
 S = loadLocal() || JSON.parse(JSON.stringify(SEED));
 if(!S.config) S.config = JSON.parse(JSON.stringify(SEED.config));
-if(typeof S.config.githubToken === 'undefined') S.config.githubToken = '';
-if(typeof S.config.gistId === 'undefined') S.config.gistId = '';
 if(typeof S.config.lastModified === 'undefined') S.config.lastModified = Date.now();
 if(!S.config.horasSemana) S.config.horasSemana = Array(7).fill(S.config.horasPorDia||4);
 
@@ -871,7 +909,7 @@ function parseXlsxQuestoes(arrayBuffer){
   const wb = XLSX.read(arrayBuffer, {type:'array'});
   if(!wb.SheetNames.length) throw new Error('Arquivo sem planilhas');
   const sheet = wb.Sheets[wb.SheetNames[0]];
-  // Correção do Bug do TecConcursos que não declara o número de linhas corretamente
+  
   let maxR=0, maxC=0;
   for(const k in sheet){
     if(k.startsWith('!')) continue;
@@ -1030,7 +1068,6 @@ function renderQuestoes(){
     return diffDays <= parseInt(qPeriod);
   });
   
-  // Sort chronological for chart
   filteredHistory.sort((a,b) => new Date(a.importadoEm) - new Date(b.importadoEm));
   
   if(filteredHistory.length === 0) {
@@ -1039,7 +1076,7 @@ function renderQuestoes(){
     return;
   }
 
-  // Desenhando o gráfico se tiver mais de 1 ponto (ou 1 ponto para mostrar sozinho)
+  // Gráfico
   document.getElementById('qChartBox').style.display = 'block';
   const ctx = document.getElementById('qChart').getContext('2d');
   if(qChartInstance) qChartInstance.destroy();
@@ -1072,10 +1109,7 @@ function renderQuestoes(){
     }
   });
 
-  // O snapshot mais recente (último do array ordenado cronologicamente)
   const q = filteredHistory[filteredHistory.length - 1];
-  
-  // Para comparar e ver evolução (primeiro do período vs último do período)
   const qOldest = filteredHistory[0];
   
   document.getElementById('qInfoLabel').textContent = `Dados do arquivo: ${q.label} (Importado em ${fmtDate(new Date(q.importadoEm))})`;
@@ -1118,7 +1152,6 @@ function renderQuestoes(){
     const accCl = accClass(acc);
     const accCol = accColor(acc);
     
-    // Calcula a evolução comparando com o arquivo mais antigo do período
     let evoHtml = `<span class="q-evo flat">—</span>`;
     if(filteredHistory.length > 1) {
       const oldDisc = qOldest.disciplinas.find(x => x.nome === d.nome);
@@ -1163,7 +1196,6 @@ function renderQuestoes(){
 
 function parseNLM(text){
   const tasks=[];
-  // Suporta V1 (##### TAREFA) e V2 (TAREFA sem hashes) simultaneamente
   const blocks=text.split(/(?=\n?#{0,5}\s*TAREFA\s+\d+\s*[—\-])/i).filter(b=>b.trim()&&/TAREFA\s+\d+/i.test(b));
   blocks.forEach((block,i)=>{
     const hm=block.match(/TAREFA\s+(\d+)\s*[—\-]+\s*([A-Z_]+)/i);
@@ -1171,7 +1203,6 @@ function parseNLM(text){
     const valid=['TEORIA','LEI_SECA','TEORIA_LEI','QUESTOES','REVISAO','MAPEAMENTO'];
     const finalType=valid.includes(type)?type:'TEORIA';
     const primType=finalType==='TEORIA_LEI'?'TEORIA':finalType;
-    // Aceita "**Páginas:**" (V1) e "Páginas da Teoria:" (V2)
     const pagM=block.match(/(?:\*{0,2}P[áa]ginas(?:\s+da\s+Teoria)?\*{0,2}):?\s*([\d]+[\s–\-]+[\d]+)/i);
     const paginas=pagM?pagM[1].replace(/\s/g,'–'):'—';
     const durM=block.match(/dura[çc][ãa]o[^:]*:?\s*(\d+)\s*[–\-]\s*(\d+)/i);
@@ -1180,7 +1211,6 @@ function parseNLM(text){
     const edital=edM?edM[1]==='✅'?'ok':'ctx':'ok';
     const topM=block.match(/\*{0,2}T[óo]pico\s+principal\*{0,2}:?\s*(.+)/i);
     const topico=topM?cleanMd(topM[1]):`Tarefa ${i+1}`;
-    // getSec: encontra seção por emoji — funciona com e sem hashes (V1 e V2)
     const getSec=(emoji)=>{
       const re=new RegExp(`(?:#{0,6}\\s*)?${emoji}[^\\n]*\\n([\\s\\S]*?)(?=\\n\\s*(?:#{0,6}\\s*)?(?:📖|⚖️|📝|💡|🔑|✂️)|\\n#{0,5}\\s*TAREFA\\s+\\d+|$)`,'i');
       const m=block.match(re);return m?m[1].trim():'';
@@ -1196,7 +1226,6 @@ function parseNLM(text){
       }
     });
     const parseBullets=(sec)=>sec.split('\n').filter(l=>/^[•\-\*]/.test(l.trim())).map(l=>cleanMd(l.replace(/^[•\-\*]\s*/,''))).filter(Boolean);
-    // 📝 Questões de Fixação (novo no V2)
     const questoesFixacao=parseBullets(getSec('📝'));
     const bizus=parseBullets(getSec('💡'));
     const kwSec=getSec('🔑');
@@ -1324,53 +1353,26 @@ function openSettings(){
 function closeSettings(){document.getElementById('modal-settings').classList.remove('open')}
 
 function renderSettings(){
-  const hasToken=!!S.config.githubToken,hasGist=!!S.config.gistId;
   let syncHtml='';
-  if(!hasToken){
+  if(!currentUser){
     syncHtml=`
-      <div class="alert-box alert-info">
-        <strong>Como criar o token:</strong><br>
-        1. Vá em <a href="https://github.com/settings/tokens" target="_blank" style="color:var(--bl)">github.com/settings/tokens</a><br>
-        2. Generate new token (classic)<br>
-        3. Escopo: marque apenas <code style="background:var(--s2);padding:1px 5px;border-radius:3px">gist</code><br>
-        4. Defina expiração (90 dias recomendado) e copie o token.
-      </div>
-      <div class="fg" style="margin-bottom:12px">
-        <label>GitHub Personal Access Token</label>
-        <input id="gh-token" type="password" placeholder="ghp_xxxxxxxxxxxxxxxxxxxx">
-      </div>
-      <button class="btn btn-p" onclick="conectarGitHub()">🔗 Conectar e criar Gist</button>`;
-  }else if(!hasGist){
-    syncHtml=`
-      <div class="alert-box alert-ok">Token conectado. Agora criamos o Gist:</div>
-      <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap">
-        <button class="btn btn-p" onclick="criarNovoGist()">📝 Criar novo Gist</button>
-        <button class="btn btn-g" onclick="usarGistExistente()">🔗 Usar Gist existente</button>
-      </div>
-      <button class="btn btn-s" style="margin-top:10px;color:var(--re)" onclick="desconectarGitHub()">Desconectar</button>`;
+      <div class="alert-box alert-info">Sincronização em nuvem via Firebase. Faça login para salvar seus dados com segurança num ambiente Multi-Usuário.</div>
+      <button class="btn btn-p" onclick="loginFirebase()">🔑 Entrar com Google</button>`;
   }else{
-    const tk=S.config.githubToken;
-    const masked='ghp_••••••••'+tk.slice(-4);
     syncHtml=`
-      <div class="alert-box alert-ok">✓ Sincronizado com GitHub</div>
+      <div class="alert-box alert-ok">✓ Sincronizado na nuvem (Firebase)</div>
       <div style="margin-bottom:8px">
-        <div style="font-size:11px;color:var(--mu);margin-bottom:4px">Token</div>
-        <div class="tk-display">${masked}</div>
-      </div>
-      <div style="margin-bottom:8px">
-        <div style="font-size:11px;color:var(--mu);margin-bottom:4px">Gist ID</div>
-        <div class="tk-display">
-          <a href="https://gist.github.com/${S.config.gistId}" target="_blank" style="color:var(--bl);text-decoration:none">${S.config.gistId} ↗</a>
-        </div>
+        <div style="font-size:11px;color:var(--mu);margin-bottom:4px">Conectado como</div>
+        <div class="tk-display">${currentUser.email}</div>
       </div>
       <div class="sync-status-line">
         <span class="sync-dot s-${syncState}"></span>
-        ${syncState==='synced'?'Última sincronização: '+fmtDateTime(S.config.lastSyncAt):syncState==='syncing'?'Sincronizando…':syncState==='error'?'Erro — clique abaixo para tentar novamente':'Aguardando mudança'}
+        ${syncState==='synced'?'Última sincronização: '+fmtDateTime(S.config.lastSyncAt):syncState==='syncing'?'Sincronizando…':syncState==='error'?'Erro — verifique o console':'Aguardando mudança'}
       </div>
       <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">
-        <button class="btn btn-g" onclick="forcarPull()">↓ Puxar do Gist</button>
-        <button class="btn btn-g" onclick="forcarPush()">↑ Empurrar para Gist</button>
-        <button class="btn btn-s" style="color:var(--re)" onclick="desconectarGitHub()">Desconectar</button>
+        <button class="btn btn-g" onclick="pullFirebase(true)">↓ Forçar Puxar</button>
+        <button class="btn btn-g" onclick="pushFirebase(true)">↑ Forçar Empurrar</button>
+        <button class="btn btn-s" style="color:var(--re)" onclick="logoutFirebase()">Sair</button>
       </div>`;
   }
   document.getElementById('syncSettings').innerHTML=syncHtml;
@@ -1391,7 +1393,6 @@ function renderSettings(){
     </div>`;
   });
   wHtml+=`<div style="font-size:11px;color:${pesoTotal===100?'var(--gr)':'var(--yl)'};margin-bottom:14px">Soma: ${pesoTotal}% ${pesoTotal!==100?'— ideal 100%':'✓'}</div>`;
-  // Formulário para adicionar nova disciplina
   const coresPre=['#3266ad','#1D9E75','#7F77DD','#D85A30','#BA7517','#ec4899','#06b6d4','#84cc16','#a855f7','#f97316'];
   wHtml+=`<div class="disc-add-form">
     <div style="font-size:10px;font-weight:700;color:var(--mu);text-transform:uppercase;letter-spacing:.1em;margin-bottom:10px">➕ Nova Disciplina</div>
@@ -1425,26 +1426,20 @@ function renderSettings(){
   document.getElementById('scheduleSettings').innerHTML=sHtml;
 }
 
-// Atualiza horas de um dia específico (0=Dom, 1=Seg ... 6=Sáb)
 function updateHoraDia(idx,val){
   if(!S.config.horasSemana) S.config.horasSemana=Array(7).fill(4);
   S.config.horasSemana[idx]=Math.max(0,parseInt(val)||0);
   saveState();
-  // Atualiza só o total e o título — evita rerender completo enquanto o usuário digita
   const totalSem=S.config.horasSemana.reduce((s,h)=>s+h,0);
   const hoje=new Date().getDay();
   const el=document.querySelector('.day-total');
   if(el) el.innerHTML=`Total da semana: <span style="color:var(--amb)">${totalSem}h</span> · Hoje: <span style="color:var(--amb)">${S.config.horasSemana[hoje]}h</span>`;
   if(idx===hoje) renderHoje();
 }
-
-// Atualiza cor da disciplina
 function updateDiscCor(id,cor){
   const d=S.disciplinas.find(x=>x.id===id);if(!d)return;
   d.cor=cor;saveState();renderAll();
 }
-
-// Adiciona nova disciplina
 function adicionarDisciplina(){
   const nome=document.getElementById('new-disc-nome').value.trim();
   const cor=document.getElementById('new-disc-cor').value;
@@ -1454,8 +1449,6 @@ function adicionarDisciplina(){
   S.disciplinas.push({id:uid(),nome,cor,peso,aulas:[]});
   saveState();renderSettings();renderAll();
 }
-
-// Remove disciplina com confirmação (dupla se tiver aulas)
 function removerDisciplina(id){
   const d=S.disciplinas.find(x=>x.id===id);if(!d)return;
   const msg=d.aulas.length>0
@@ -1466,90 +1459,14 @@ function removerDisciplina(id){
   S.disciplinas=S.disciplinas.filter(x=>x.id!==id);
   saveState();renderSettings();renderAll();
 }
-
-// Preenche o input de horas da Meta com o total da agenda semanal
 function usarAgenda(){
   const total=(S.config.horasSemana||[]).reduce((s,h)=>s+h,0);
   document.getElementById('metaHoras').value=total||24;
   renderMeta();
 }
-
 function updateDiscPeso(id,val){
   const d=S.disciplinas.find(x=>x.id===id);if(!d)return;
   d.peso=parseInt(val)||1;saveState();renderSettings();renderAll();
-}
-async function conectarGitHub(){
-  const tk=document.getElementById('gh-token').value.trim();
-  if(!tk){alert('Cole o token primeiro.');return}
-  try{
-    setSyncState('syncing');
-    await testToken(tk);
-    S.config.githubToken=tk;
-    saveLocal();
-    renderSettings();
-    setSyncState('unconfigured');
-  }catch(e){alert('Erro: '+e.message);setSyncState('error',e.message)}
-}
-async function criarNovoGist(){
-  if(!S.config.githubToken)return;
-  try{
-    setSyncState('syncing');
-    const id=await createGist();
-    S.config.gistId=id;
-    S.config.lastSyncAt=new Date().toISOString();
-    lastPushedJson=JSON.stringify(S);
-    saveLocal();
-    setSyncState('synced');
-    renderSettings();
-  }catch(e){alert('Erro: '+e.message);setSyncState('error',e.message)}
-}
-function usarGistExistente(){
-  const id=prompt('Cole o ID do Gist (a parte após gist.github.com/seu-usuario/):');
-  if(!id)return;
-  S.config.gistId=id.trim();
-  saveLocal();forcarPull();
-}
-async function forcarPull(){
-  if(!S.config.gistId)return;
-  try{
-    setSyncState('syncing');
-    const remote=await pullGist();
-    if(confirm('Substituir dados locais pelo conteúdo do Gist?')){
-      const localToken=S.config.githubToken;
-      const localGistId=S.config.gistId;
-      S=remote;
-      S.config.githubToken=localToken;
-      S.config.gistId=localGistId;
-      if(!S.config.lastModified)S.config.lastModified=Date.now();
-      if(!S.config.horasSemana)S.config.horasSemana=Array(7).fill(S.config.horasPorDia||4);
-      
-      // Auto-migração ao puxar do Gist
-      if(typeof S.questoes_history === 'undefined') {
-        S.questoes_history = [];
-        if(S.questoes) { S.questoes_history.push(S.questoes); delete S.questoes; }
-      }
-      
-      lastPushedJson=JSON.stringify(S);
-      saveLocal();renderAll();
-    }
-    setSyncState('synced');
-    renderSettings();
-  }catch(e){alert('Erro: '+e.message);setSyncState('error',e.message)}
-}
-async function forcarPush(){
-  if(!S.config.gistId)return;
-  try{
-    setSyncState('syncing');
-    lastPushedJson='';
-    await pushGist();
-    setSyncState('synced');
-    renderSettings();
-  }catch(e){alert('Erro: '+e.message);setSyncState('error',e.message)}
-}
-function desconectarGitHub(){
-  if(!confirm('Desconectar do GitHub? Os dados locais ficam intactos.'))return;
-  S.config.githubToken='';S.config.gistId='';S.config.lastSyncAt=null;
-  saveLocal();setSyncState('unconfigured');renderSettings();
 }
 
 function goTab(name){
@@ -1564,48 +1481,25 @@ function goTab(name){
   if(name==='questoes')renderQuestoes();
 }
 
-async function init(){
-  renderAll();
-  if(S.config.githubToken && S.config.gistId){
+// ----------------------------------------------------------------------
+// Listener Principal de Autenticação do Firebase
+// ----------------------------------------------------------------------
+auth.onAuthStateChanged(async (user) => {
+  currentUser = user;
+  if(user) {
     setSyncState('syncing');
-    try{
-      const remote = await pullGist();
-      const remoteModified = remote.config?.lastModified || 0;
-      const localModified = S.config.lastModified || 0;
-      // Preserva sempre as credenciais locais — token e gistId nunca vêm do Gist
-      const localToken = S.config.githubToken;
-      const localGistId = S.config.gistId;
-      if(remoteModified > localModified){
-        S = remote;
-        S.config.githubToken = localToken;
-        S.config.gistId = localGistId;
-        if(!S.config.lastModified) S.config.lastModified = Date.now();
-        if(!S.config.horasSemana) S.config.horasSemana = Array(7).fill(S.config.horasPorDia||4);
-        
-        // Auto-migração
-        if(typeof S.questoes_history === 'undefined') {
-          S.questoes_history = [];
-          if(S.questoes) { S.questoes_history.push(S.questoes); delete S.questoes; }
-        }
-
-        saveLocal();
-        renderAll();
-        lastPushedJson = JSON.stringify(S);
-      } else if(localModified > remoteModified){
-        await pushGist();
-      } else {
-        lastPushedJson = JSON.stringify(remote);
-      }
-      setSyncState('synced');
-    }catch(e){
-      console.error(e);
-      setSyncState('error', e.message);
-    }
+    await pullFirebase(false);
   } else {
-    setSyncState('unconfigured');
+    setSyncState('unconfigured', 'Faça login para salvar na nuvem');
+    renderSettings(); // Atualiza modal se estiver aberto
   }
+});
+
+function init(){
+  renderAll();
   isInitializing = false;
 }
+
 init();
 </script>
 </body>
