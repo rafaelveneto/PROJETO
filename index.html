@@ -6,6 +6,7 @@
 <title>APROVADO · Tracker</title>
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;700;800&family=JetBrains+Mono:wght@400;600&family=DM+Sans:wght@400;500&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <style>
 :root{
   --bg:#0c0f14;--s1:#13181f;--s2:#1a2030;--s3:#212b3a;--bd:#2a3547;
@@ -167,7 +168,7 @@ select option{background:var(--s2)}
 .gsub{font-size:12px;color:var(--mu);margin-bottom:22px}
 .disc-color-dot{width:10px;height:10px;border-radius:50%;display:inline-block;flex-shrink:0}
 .q-disc-card{background:var(--s1);border:1px solid var(--bd);border-radius:var(--r);margin-bottom:10px;overflow:hidden}
-.q-disc-head{padding:14px 18px;display:grid;grid-template-columns:18px 1fr 80px 90px 60px;align-items:center;gap:12px;cursor:pointer}
+.q-disc-head{padding:14px 18px;display:grid;grid-template-columns:18px 1fr 80px 130px 60px;align-items:center;gap:12px;cursor:pointer}
 .q-disc-head:hover{background:var(--s2)}
 .q-disc-name{font-size:13px;font-weight:500;color:var(--tx)}
 .q-acc{font-family:'JetBrains Mono',monospace;font-size:14px;font-weight:600;text-align:right}
@@ -175,6 +176,10 @@ select option{background:var(--s2)}
 .q-bar{height:4px;background:var(--s3);border-radius:99px;overflow:hidden;width:80px}
 .q-bar-fill{height:100%;border-radius:99px}
 .q-vol{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--mu);text-align:right}
+.q-evo{font-size:11px;font-weight:600;font-family:'JetBrains Mono',monospace;display:inline-block;padding:2px 6px;border-radius:4px;background:var(--s3)}
+.q-evo.up{color:var(--gr);background:rgba(74,222,128,0.1)}
+.q-evo.down{color:var(--re);background:rgba(248,113,113,0.1)}
+.q-evo.flat{color:var(--mu)}
 .q-topics{padding:0 18px 14px;display:none;border-top:1px solid var(--bd)}
 .q-topics.open{display:block}
 .q-topic{display:grid;grid-template-columns:1fr 70px 70px 50px;gap:10px;align-items:center;padding:6px 0;border-bottom:1px solid var(--bd);font-size:12px}
@@ -185,6 +190,7 @@ select option{background:var(--s2)}
 .q-weak-name{color:var(--tx);font-size:12px;line-height:1.4}
 .q-weak-disc{font-size:10px;color:var(--mu);margin-top:2px}
 .q-filter-bar{background:var(--s1);border:1px solid var(--bd);border-radius:var(--r);padding:14px 18px;margin-bottom:14px;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.chart-container{background:var(--s1);border:1px solid var(--bd);border-radius:var(--r);padding:20px;margin-bottom:18px;position:relative;height:240px;width:100%}
 .modal-bg{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.75);display:none;align-items:flex-start;justify-content:center;z-index:1000;padding:60px 20px;overflow:auto}
 .modal-bg.open{display:flex}
 .modal{background:var(--s1);border:1px solid var(--bd);border-radius:12px;padding:24px;width:560px;max-width:100%}
@@ -212,7 +218,7 @@ select option{background:var(--s2)}
   main{padding:18px 12px}
   .pv-grid{grid-template-columns:1fr 1fr}
   .sync-ind .sync-text{display:none}
-  .q-disc-head{grid-template-columns:14px 1fr 60px 50px}
+  .q-disc-head{grid-template-columns:14px 1fr 60px 100px 40px}
   .q-disc-head .q-bar{display:none}
   .q-topic{grid-template-columns:1fr 50px 40px}
   .q-topic > :nth-child(3){display:none}
@@ -298,9 +304,26 @@ select option{background:var(--s2)}
 </div>
 
 <div id="tab-questoes" class="tab">
-  <div class="sh">
-    <div class="stit">Questões</div>
-    <div id="qInfoLabel" style="font-size:11px;color:var(--mu)"></div>
+  <div class="sh" style="margin-bottom:10px">
+    <div class="stit">Dashboard de Questões</div>
+  </div>
+  <div class="q-filter-bar">
+    <span class="meta-label">Período de Análise:</span>
+    <select id="qPeriodSelect" style="width:auto;font-size:13px;font-weight:600" onchange="qPeriod=this.value;renderQuestoes()">
+      <option value="30">Últimos 30 dias</option>
+      <option value="90">Últimos 3 meses</option>
+      <option value="180">Últimos 6 meses</option>
+      <option value="all" selected>Todo o Histórico</option>
+    </select>
+    
+    <span class="meta-label" style="margin-left:14px">Mín. de questões:</span>
+    <input type="number" id="qMinQ" value="1" min="0" max="500" class="hrs-input" style="width:60px;font-size:14px" oninput="qMinQ=parseInt(this.value)||0;renderQuestoes()">
+    <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--mu);cursor:pointer;margin-left:6px">
+      <input type="checkbox" style="width:auto" id="qShowAllCheck" onchange="qShowAll=this.checked;renderQuestoes()"> Ver todas matérias
+    </label>
+  </div>
+  <div class="chart-container" style="display:none" id="qChartBox">
+    <canvas id="qChart"></canvas>
   </div>
   <div id="questoesContent"></div>
 </div>
@@ -355,11 +378,12 @@ select option{background:var(--s2)}
     <div class="card">
       <div class="ct">Importar estatística do TecConcursos</div>
       <div class="alert-box alert-info">
-        <strong>Como obter o arquivo:</strong> No TecConcursos, vá em Estatísticas → Atividades → clique no botão de download (ícone de planilha) para baixar o xlsx com seus dados detalhados por tópico.
+        <strong>Como obter o arquivo:</strong> No TecConcursos, vá em Estatísticas → Atividades → clique no botão de download (ícone de planilha) para baixar o xlsx com seus dados detalhados por tópico.<br>
+        <em>Dica: Exporte e importe suas estatísticas periodicamente (ex: a cada 15 dias). O sistema guardará o histórico para construir o gráfico da sua evolução.</em>
       </div>
       <div class="fg2">
-        <div class="fg full"><label>Rótulo deste import</label>
-          <input id="xls-label" placeholder="Ex: Câmara dos Deputados — Maio/2026"></div>
+        <div class="fg full"><label>Rótulo deste import (Ex: "Simulado de Maio")</label>
+          <input id="xls-label" placeholder="Deixe em branco para usar a data de hoje"></div>
         <div class="fg full"><label>Arquivo xlsx</label>
           <input id="xls-file" type="file" accept=".xlsx,.xls" onchange="lerXlsx(this)"></div>
       </div>
@@ -405,92 +429,12 @@ const SEED = {
   config:{horasPorDia:4, diasPorSemana:6, horasSemana:[0,4,4,4,4,4,2], dataInicio:TODAY_ISO, githubToken:'', gistId:'', lastModified:Date.now(), lastSyncAt:null},
   disciplinas:[
     {id:'port', nome:'Língua Portuguesa',         peso:34, cor:'#3266ad', aulas:[]},
-    {id:'regi', nome:'Regimento Interno + Comum', peso:29, cor:'#1D9E75', aulas:[
-      {id:'regi-a00', codigo:'Aula 00', titulo:'Mesa Diretora – Órgãos Iniciais', tarefas:[
-        {id:'r00t1',label:'Tarefa 1',type:'TEORIA_LEI',primaryType:'TEORIA',edital:'ok',paginas:'6–26',
-         topico:'Introdução, Sede, Sessões Legislativas e Posse',
-         descricao:'Introdução ao RICD, Da Sede, Sessões Legislativas, Sessões Preparatórias e Posse.',
-         comando:'Leia os Arts. 1º ao 4º do RICD com o material teórico. Atenção redobrada à suspensão do recesso legislativo e aos procedimentos de posse.',
-         leiSeca:[{dispositivo:'RICD',artigos:'Arts. 1º ao 4º',motivo:'FGV cobra exceções procedimentais para alteração da Sede e datas precisas de posse.'},
-                  {dispositivo:'CF',artigos:'Arts. 44, 51 e 57',motivo:'Complementam a fundamentação das sessões legislativas e quóruns de convocação.'}],
-         duracaoMin:80,duracaoMax:100,status:'pendente',
-         bizus:['Mesa pode decidir por outro edifício/local, mas exige referendo da maioria absoluta do Plenário.','Sessão Legislativa Ordinária não será interrompida em 17 de julho se a LDO não for aprovada.','Posse: chamada Norte→Sul e alfabética. Diploma até 31 de janeiro.','Posse por procuração é expressamente vedada.'],
-         filtros:['Págs. 3-5: PULAR — Apresentação do curso.','Págs. 17 e 20: SKIMMING — Tabelas ilustrativas.'],
-         keywords:['RICD','Sede','Sessão Legislativa Ordinária','LDO','Sessão Preparatória','Posse de Deputados Federais']},
-        {id:'r00t2',label:'Tarefa 2',type:'TEORIA_LEI',primaryType:'TEORIA',edital:'ok',paginas:'27–51',
-         topico:'Sessões Preparatórias – Eleição da Mesa',
-         descricao:'Eleição da Mesa, PPP, Formação de Blocos, Escrutínios, Eleição Extemporânea.',
-         comando:'Leia os Arts. 5º a 8º do RICD. Foque em como se formam Mesa e Blocos.',
-         leiSeca:[{dispositivo:'RICD',artigos:'Arts. 5º ao 8º',motivo:'Prazos de vacância e princípio da proporcionalidade despencam em provas.'}],
-         duracaoMin:100,duracaoMax:125,status:'pendente',
-         bizus:['Mesa: 2 anos, vedada recondução para o mesmo cargo na mesma legislatura.','Vaga até 30/nov do 2º ano → eleição em até 5 sessões. Após: Mesa designa.','Empate: mais legislaturas; persiste: mais idoso.','Mudou de partido? Perde o cargo na Mesa (Art. 8º §5º).'],
-         filtros:['Págs. 34-35: SKIMMING — Tabelas longas de cálculo.'],
-         keywords:['Eleição da Mesa Diretora','PPP','Blocos Parlamentares','Vacância na Mesa','Escrutínio Secreto']},
-        {id:'r00t3',label:'Tarefa 3',type:'TEORIA_LEI',primaryType:'TEORIA',edital:'ok',paginas:'52–74',
-         topico:'Mesa e Início do Presidente da Câmara',
-         descricao:'Comissão Diretora, Competências da Mesa, ADI, Competências do Presidente.',
-         comando:'Liste em papel competências da Mesa vs. do Presidente. Leia Arts. 14-17 (1ª parte).',
-         leiSeca:[{dispositivo:'RICD',artigos:'Arts. 14-17 (parcial)',motivo:'Núcleo de governança da Câmara. Arts. 15 (Mesa) e 17 (Presidente) caem massivamente.'}],
-         duracaoMin:90,duracaoMax:110,status:'pendente',
-         bizus:['Mesa (não Plenário) declara a perda do mandato.','Mesa propõe ADI. Presidente apenas representa a Câmara se já em curso.','Ad referendum: EXCETO suspensão cautelar de mandato.','Em votações abertas, Presidente só desempata. Em secretas, vota.'],
-         filtros:['Pág. 53: SKIMMING — Imagem ilustrativa.','Pág. 68: PULAR — Foto do Plenário.'],
-         keywords:['Comissão Diretora','Competências da Mesa','Perda de Mandato','Ad Referendum','Competências do Presidente','Desempate']},
-        {id:'r00t4',label:'Tarefa 4',type:'TEORIA_LEI',primaryType:'TEORIA',edital:'ok',paginas:'75–94',
-         topico:'Competências do Presidente, Vices, Secretaria',
-         descricao:'Vice-Presidentes, Atribuições dos Secretários, Suplentes, Resumo.',
-         comando:'Leia Arts. 17 (final), 18, 19 e 19-A. Foque na hierarquia de substituição.',
-         leiSeca:[{dispositivo:'RICD',artigos:'Arts. 17 (final) ao 19-A',motivo:'Banca troca numerações dos secretários e regras de substituição.'}],
-         duracaoMin:80,duracaoMax:100,status:'pendente',
-         bizus:['Substituição: 1º Vice → 2º Vice → 1º Sec → 2º Sec → 3º Sec → 4º Sec → Suplentes → Mais idoso entre os com mais legislaturas.','1º Sec é o "prefeito da Câmara": serviços, posse do Diretor-Geral, ofícios a Ministros.','Suplentes participam da Mesa mas não relatam matéria reservada.'],
-         filtros:['Págs. 92-94 (Resumo): LEITURA ATENTA.'],
-         keywords:['Vice-Presidentes','Primeiro-Secretário','Substituição do Presidente','Suplentes','Pedido de Informação']}
-      ]},
-      {id:'regi-a02', codigo:'Aula 02', titulo:'Comissões – Parte 1', tarefas:[
-        {id:'r02t1',label:'Tarefa 1',type:'TEORIA_LEI',primaryType:'TEORIA',edital:'ok',paginas:'3–25',
-         topico:'Conceitos e Classificações de Comissões',
-         descricao:'Base constitucional (Art. 58 CF); classificações: Permanentes × Temporárias, Mistas, Representativas.',
-         comando:'Leia os Arts. 22 a 32 do RICD. Estude págs. 5-25 conectando classificações aos dispositivos.',
-         leiSeca:[{dispositivo:'CF/88',artigos:'Art. 58, §§1º-4º',motivo:'§4º cria a Comissão Representativa do CN (cobrado isoladamente).'},
-                  {dispositivo:'RICD',artigos:'Arts. 22-26',motivo:'Conceito, natureza e classificação.'}],
-         duracaoMin:75,duracaoMax:90,status:'pendente',
-         bizus:['Representativa ≠ Mista. Representativa: Art. 58 §4º CF, só no recesso.','Especial ≠ CPI ≠ Externa — cada uma com quórum e prazo diferentes.','Poder Conclusivo: comissões podem decidir sem Plenário, SALVO recurso de 1/10 dos Deputados.'],
-         filtros:['Págs. 3-4: SKIMMING — Histórico, pule para 1.2 Base Constitucional.'],
-         keywords:['Comissões Permanentes','Comissões Temporárias','Comissão Mista','Comissão Representativa (Art. 58 §4º CF)','Poder Conclusivo']},
-        {id:'r02t2',label:'Tarefa 2',type:'TEORIA',primaryType:'TEORIA',edital:'ok',paginas:'26–50',
-         topico:'Proporcionalidade Partidária e Fixação de Vagas',
-         descricao:'PPP, rodízio das comissões temporárias, fixação de membros, cumulativas vs. não cumulativas.',
-         comando:'Estude págs. 26-50. Foco no quociente partidário e limites percentuais.',
-         leiSeca:[],
-         duracaoMin:75,duracaoMax:90,status:'pendente',
-         bizus:['Banca troca percentuais: mínimo 3,5% (arredondado), máximo 13%.','Cumulativas: vaga nas duas. Não cumulativas: indicação em uma cancela a outra.','Bancada com menos de 1% pode não ter vaga em todas as comissões.'],
-         filtros:['Págs. 31-34: PULAR — Tabelas da 57ª Legislatura.','Págs. 37-38: PULAR imagens.'],
-         keywords:['PPP','Rodízio de Bancadas','Membros: mín. 3,5% / máx. 13%','Cumulativas e Não Cumulativas']},
-        {id:'r02t3',label:'Tarefa 3',type:'TEORIA',primaryType:'TEORIA',edital:'ok',paginas:'51–65',
-         topico:'Composição, Mesas e Subcomissões',
-         descricao:'Quociente partidário, indicações, eleição da Mesa da Comissão, Subcomissões e Turmas.',
-         comando:'Estude págs. 51-65. Atenção às vedações da Mesa e limites de subcomissões.',
-         leiSeca:[],
-         duracaoMin:60,duracaoMax:75,status:'pendente',
-         bizus:['Suplente NÃO pode presidir comissão.','Presidente NÃO pode ser reeleito na mesma legislatura.','Subcomissões Permanentes: máx. 3. Especiais: máx. 3.'],
-         filtros:[],
-         keywords:['Quociente Partidário','Eleição da Mesa da Comissão','Vedação à Reeleição','Suplente não preside','Subcomissões']},
-        {id:'r02t4',label:'Tarefa 4',type:'TEORIA_LEI',primaryType:'TEORIA',edital:'ok',paginas:'66–80',
-         topico:'Reuniões, Perda de Vaga e Resumo',
-         descricao:'Reuniões (Ord., Extraord., Secretas), Atas, perda de vaga, Campos Temáticos, Resumo.',
-         comando:'Leia Arts. 50-56 do RICD. Estude págs. 66-80 com filtro em Campos Temáticos.',
-         leiSeca:[{dispositivo:'RICD',artigos:'Arts. 50-53',motivo:'Tipos de reunião e quórum — cobrado literalmente.'},
-                  {dispositivo:'RICD',artigos:'Art. 55',motivo:'Perda de vaga: 5 faltas consecutivas ou 1/4 intercaladas — banca troca números.'}],
-         duracaoMin:60,duracaoMax:75,status:'pendente',
-         bizus:['Perda de vaga: 5 CONSECUTIVAS OU 1/4 INTERCALADAS. Banca troca.','Reunião Secreta: maioria absoluta dos presentes; Ata reservada.','CCJC: PEC e redação final. CFT: financeiro. CFFC: TCU. CLP: Participativa.'],
-         filtros:['Págs. 63-76 (Campos Temáticos): SKIMMING EXTREMO — Foque em CCJC, CFT, CFFC, CLP.','Págs. 77-80 (Resumo): LEITURA ATENTA.'],
-         keywords:['Reuniões Secretas','Quórum de Instalação','Perda de Vaga','CCJC','CFFC','Atas de Comissão']}
-      ]}
-    ]},
+    {id:'regi', nome:'Regimento Interno + Comum', peso:29, cor:'#1D9E75', aulas:[]},
     {id:'cons', nome:'Direito Constitucional', peso:17, cor:'#7F77DD', aulas:[]},
     {id:'adm',  nome:'Direito Administrativo', peso:12, cor:'#D85A30', aulas:[]},
     {id:'ingl', nome:'Língua Inglesa',         peso:8,  cor:'#BA7517', aulas:[]},
   ],
-  questoes: null
+  questoes_history: [] // NOVO MODELO: Array para manter histórico de acertos
 };
 
 let S;
@@ -498,6 +442,7 @@ let syncState = 'unconfigured';
 let syncTimer = null;
 let lastPushedJson = '';
 let isInitializing = true;
+let qChartInstance = null; // Instância do gráfico
 
 function loadLocal(){
   try{const r=localStorage.getItem('aprovado-v5');return r?JSON.parse(r):null}catch{return null}
@@ -610,8 +555,16 @@ if(!S.config) S.config = JSON.parse(JSON.stringify(SEED.config));
 if(typeof S.config.githubToken === 'undefined') S.config.githubToken = '';
 if(typeof S.config.gistId === 'undefined') S.config.gistId = '';
 if(typeof S.config.lastModified === 'undefined') S.config.lastModified = Date.now();
-if(typeof S.questoes === 'undefined') S.questoes = null;
 if(!S.config.horasSemana) S.config.horasSemana = Array(7).fill(S.config.horasPorDia||4);
+
+// MIGRACÃO AUTOMÁTICA DE DADOS: de S.questoes (antigo) para S.questoes_history (novo array)
+if(typeof S.questoes_history === 'undefined') {
+  S.questoes_history = [];
+  if(S.questoes) {
+    S.questoes_history.push(S.questoes);
+    delete S.questoes;
+  }
+}
 
 const uid = ()=>Math.random().toString(36).slice(2,9);
 function fmtMin(m){if(m<60)return m+'min';const h=Math.floor(m/60),r=m%60;return r?`${h}h ${r}min`:`${h}h`}
@@ -918,7 +871,7 @@ function parseXlsxQuestoes(arrayBuffer){
   const wb = XLSX.read(arrayBuffer, {type:'array'});
   if(!wb.SheetNames.length) throw new Error('Arquivo sem planilhas');
   const sheet = wb.Sheets[wb.SheetNames[0]];
-  // TecConcursos exports sometimes declare wrong !ref. Recompute from actual cells.
+  // Correção do Bug do TecConcursos que não declara o número de linhas corretamente
   let maxR=0, maxC=0;
   for(const k in sheet){
     if(k.startsWith('!')) continue;
@@ -996,20 +949,24 @@ function lerXlsx(input){
   reader.onload = e=>{
     try{
       _xlsxParsed = parseXlsxQuestoes(e.target.result);
-      const lbl = document.getElementById('xls-label').value.trim() || file.name.replace(/\.xlsx?$/,'');
-      const d = _xlsxParsed;
-      const weakCount = d.disciplinas.filter(x=>x.pctAcerto<60 && x.qResolvidas>=5).length;
+      // Se não der rótulo, usa a data atual
+      const d=new Date();
+      const defaultLbl = `${d.getDate().toString().padStart(2,'0')}/${(d.getMonth()+1).toString().padStart(2,'0')}/${d.getFullYear()}`;
+      const lbl = document.getElementById('xls-label').value.trim() || `Importação ${defaultLbl}`;
+      
+      const parsedData = _xlsxParsed;
+      const weakCount = parsedData.disciplinas.filter(x=>x.pctAcerto<60 && x.qResolvidas>=5).length;
       document.getElementById('xls-preview').innerHTML = `
         <div class="parse-preview">
           <div style="font-size:12px;color:var(--gr);margin-bottom:14px">✔ Arquivo lido com sucesso</div>
           <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px">
-            <div class="sc"><span class="sv">${d.total}</span><div class="sl">Questões</div></div>
-            <div class="sc"><span class="sv" style="color:${accColor(d.pctGeral)}">${d.pctGeral}%</span><div class="sl">Acerto</div></div>
-            <div class="sc"><span class="sv">${d.disciplinas.length}</span><div class="sl">Matérias</div></div>
+            <div class="sc"><span class="sv">${parsedData.total}</span><div class="sl">Questões</div></div>
+            <div class="sc"><span class="sv" style="color:${accColor(parsedData.pctGeral)}">${parsedData.pctGeral}%</span><div class="sl">Acerto</div></div>
+            <div class="sc"><span class="sv">${parsedData.disciplinas.length}</span><div class="sl">Matérias</div></div>
             <div class="sc"><span class="sv" style="color:var(--re)">${weakCount}</span><div class="sl">Pontos fracos</div></div>
           </div>
           <div style="display:flex;gap:10px">
-            <button class="btn btn-p" onclick="confirmarXlsx()">✔ Confirmar e salvar</button>
+            <button class="btn btn-p" onclick="confirmarXlsx()">✔ Salvar Histórico</button>
             <button class="btn btn-g" onclick="document.getElementById('xls-preview').innerHTML='';_xlsxParsed=null;document.getElementById('xls-file').value=''">Cancelar</button>
           </div>
         </div>`;
@@ -1019,10 +976,15 @@ function lerXlsx(input){
   };
   reader.readAsArrayBuffer(file);
 }
+
 function confirmarXlsx(){
   if(!_xlsxParsed)return;
-  const lbl = document.getElementById('xls-label').value.trim() || 'Import sem nome';
-  S.questoes = {
+  const d=new Date();
+  const defaultLbl = `${d.getDate().toString().padStart(2,'0')}/${(d.getMonth()+1).toString().padStart(2,'0')}/${d.getFullYear()}`;
+  const lbl = document.getElementById('xls-label').value.trim() || `Importação ${defaultLbl}`;
+  
+  const novoImport = {
+    id: uid(),
     importadoEm: new Date().toISOString(),
     label: lbl,
     total: _xlsxParsed.total,
@@ -1031,7 +993,10 @@ function confirmarXlsx(){
     pctGeral: _xlsxParsed.pctGeral,
     disciplinas: _xlsxParsed.disciplinas
   };
+  
+  S.questoes_history.push(novoImport);
   saveState();
+  
   document.getElementById('xls-label').value='';
   document.getElementById('xls-file').value='';
   document.getElementById('xls-preview').innerHTML='';
@@ -1041,35 +1006,99 @@ function confirmarXlsx(){
 
 let qShowAll = false;
 let qMinQ = 1;
+let qPeriod = 'all'; // 30, 90, 180, all
+
 function renderQuestoes(){
   const c = document.getElementById('questoesContent');
-  if(!S.questoes){
+  if(!S.questoes_history || S.questoes_history.length === 0){
     c.innerHTML = `<div class="empty">
       <div style="font-size:36px;margin-bottom:14px">📊</div>
       <div style="margin-bottom:14px">Nenhuma estatística importada ainda.</div>
       <button class="btn btn-p" onclick="goTab('importar');setTimeout(()=>document.querySelector('.imp-tab:nth-child(3)').click(),50)">Importar planilha TecConcursos</button>
     </div>`;
+    document.getElementById('qChartBox').style.display = 'none';
     document.getElementById('qInfoLabel').textContent = '';
     return;
   }
-  const q = S.questoes;
-  document.getElementById('qInfoLabel').textContent = `${q.label} · importado em ${fmtDate(new Date(q.importadoEm))}`;
+  
+  // Filtrar histórico baseado na data
+  const now = new Date();
+  let filteredHistory = S.questoes_history.filter(h => {
+    if(qPeriod === 'all') return true;
+    const diffTime = Math.abs(now - new Date(h.importadoEm));
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    return diffDays <= parseInt(qPeriod);
+  });
+  
+  // Sort chronological for chart
+  filteredHistory.sort((a,b) => new Date(a.importadoEm) - new Date(b.importadoEm));
+  
+  if(filteredHistory.length === 0) {
+    c.innerHTML = `<div class="empty">Nenhuma importação encontrada neste período de tempo.</div>`;
+    document.getElementById('qChartBox').style.display = 'none';
+    return;
+  }
+
+  // Desenhando o gráfico se tiver mais de 1 ponto (ou 1 ponto para mostrar sozinho)
+  document.getElementById('qChartBox').style.display = 'block';
+  const ctx = document.getElementById('qChart').getContext('2d');
+  if(qChartInstance) qChartInstance.destroy();
+  qChartInstance = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: filteredHistory.map(h => h.label || fmtDate(new Date(h.importadoEm))),
+      datasets: [{
+        label: '% de Acertos',
+        data: filteredHistory.map(h => h.pctGeral),
+        borderColor: '#f5a623',
+        backgroundColor: 'rgba(245,166,35,0.1)',
+        borderWidth: 3,
+        pointBackgroundColor: '#0c0f14',
+        pointBorderColor: '#f5a623',
+        pointBorderWidth: 2,
+        pointRadius: 5,
+        fill: true,
+        tension: 0.3
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { display: false }, tooltip: {titleFont: {family: 'DM Sans'}, bodyFont: {family: 'JetBrains Mono'}} },
+      scales: { 
+        y: { min: 0, max: 100, grid: { color: '#2a3547' }, ticks: { color: '#6b7a90', font:{family: 'JetBrains Mono'} } },
+        x: { grid: { display: false }, ticks: { color: '#6b7a90', font:{family: 'DM Sans'} } }
+      }
+    }
+  });
+
+  // O snapshot mais recente (último do array ordenado cronologicamente)
+  const q = filteredHistory[filteredHistory.length - 1];
+  
+  // Para comparar e ver evolução (primeiro do período vs último do período)
+  const qOldest = filteredHistory[0];
+  
+  document.getElementById('qInfoLabel').textContent = `Dados do arquivo: ${q.label} (Importado em ${fmtDate(new Date(q.importadoEm))})`;
+  
   let html = '';
   const allTopicos = q.disciplinas.flatMap(d => d.topicos.map(t => ({...t, discNome: d.nome})));
   const weakTopicos = allTopicos
     .filter(t => t.qResolvidas >= 5 && t.pctAcerto < 60)
     .sort((a,b) => a.pctAcerto - b.pctAcerto)
     .slice(0, 10);
+    
   const visibleDisc = qShowAll ? q.disciplinas : q.disciplinas.filter(d => d.qResolvidas >= qMinQ);
   const weakDiscCount = q.disciplinas.filter(d=>d.pctAcerto<60 && d.qResolvidas>=5).length;
+  
   html += `<div class="sg">
     <div class="sc"><span class="sv">${q.total}</span><div class="sl">Questões</div></div>
     <div class="sc"><span class="sv" style="color:${accColor(q.pctGeral)}">${q.pctGeral}%</span><div class="sl">Acerto Geral</div></div>
     <div class="sc"><span class="sv">${q.disciplinas.length}</span><div class="sl">Matérias</div></div>
     <div class="sc"><span class="sv" style="color:var(--re)">${weakDiscCount}</span><div class="sl">Matérias <60%</div></div>
   </div>`;
+  
   if(weakTopicos.length){
-    html += `<div class="card"><div class="ct">🎯 Pontos Fracos (≥5 questões, <60% acerto)</div><div class="q-weak-list">`;
+    html += `<div class="card"><div class="ct">🎯 Pontos Fracos Atuais (≥5 questões, <60% acerto)</div><div class="q-weak-list">`;
     weakTopicos.forEach(t => {
       html += `<div class="q-weak-item">
         <div>
@@ -1082,19 +1111,24 @@ function renderQuestoes(){
     });
     html += `</div></div>`;
   }
-  html += `<div class="q-filter-bar">
-    <span class="meta-label">Mín. questões resolvidas:</span>
-    <input type="number" id="qMinQ" value="${qMinQ}" min="0" max="500" class="hrs-input" style="width:60px;font-size:14px" oninput="qMinQ=parseInt(this.value)||0;renderQuestoes()">
-    <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--mu);cursor:pointer">
-      <input type="checkbox" style="width:auto" ${qShowAll?'checked':''} onchange="qShowAll=this.checked;renderQuestoes()"> Mostrar todas
-    </label>
-    <span style="color:var(--mu);font-size:11px;margin-left:auto">${visibleDisc.length} de ${q.disciplinas.length} matérias</span>
-  </div>`;
+  
   visibleDisc.sort((a,b)=>b.qResolvidas-a.qResolvidas);
   visibleDisc.forEach((d,i) => {
     const acc = Math.round(d.pctAcerto);
     const accCl = accClass(acc);
     const accCol = accColor(acc);
+    
+    // Calcula a evolução comparando com o arquivo mais antigo do período
+    let evoHtml = `<span class="q-evo flat">—</span>`;
+    if(filteredHistory.length > 1) {
+      const oldDisc = qOldest.disciplinas.find(x => x.nome === d.nome);
+      if(oldDisc && oldDisc.qResolvidas > 0) {
+        const diff = d.pctAcerto - oldDisc.pctAcerto;
+        if(diff > 0.5) evoHtml = `<span class="q-evo up">↑ +${diff.toFixed(1)}%</span>`;
+        else if(diff < -0.5) evoHtml = `<span class="q-evo down">↓ ${diff.toFixed(1)}%</span>`;
+      }
+    }
+
     html += `<div class="q-disc-card">
       <div class="q-disc-head" onclick="this.nextElementSibling.classList.toggle('open')">
         <span class="disc-color-dot" style="background:${accCol}"></span>
@@ -1104,6 +1138,7 @@ function renderQuestoes(){
           <div class="q-acc ${accCl}">${acc}%</div>
           <div class="q-vol">${d.acertos}/${d.qResolvidas}</div>
         </div>
+        <div style="text-align:right">${evoHtml}</div>
         <span style="color:var(--mu);font-size:12px;text-align:right">▾</span>
       </div>
       <div class="q-topics">`;
@@ -1487,6 +1522,13 @@ async function forcarPull(){
       S.config.gistId=localGistId;
       if(!S.config.lastModified)S.config.lastModified=Date.now();
       if(!S.config.horasSemana)S.config.horasSemana=Array(7).fill(S.config.horasPorDia||4);
+      
+      // Auto-migração ao puxar do Gist
+      if(typeof S.questoes_history === 'undefined') {
+        S.questoes_history = [];
+        if(S.questoes) { S.questoes_history.push(S.questoes); delete S.questoes; }
+      }
+      
       lastPushedJson=JSON.stringify(S);
       saveLocal();renderAll();
     }
@@ -1539,6 +1581,13 @@ async function init(){
         S.config.gistId = localGistId;
         if(!S.config.lastModified) S.config.lastModified = Date.now();
         if(!S.config.horasSemana) S.config.horasSemana = Array(7).fill(S.config.horasPorDia||4);
+        
+        // Auto-migração
+        if(typeof S.questoes_history === 'undefined') {
+          S.questoes_history = [];
+          if(S.questoes) { S.questoes_history.push(S.questoes); delete S.questoes; }
+        }
+
         saveLocal();
         renderAll();
         lastPushedJson = JSON.stringify(S);
