@@ -198,9 +198,18 @@ window.irParaImport = function(panel) {
 // ==========================================
 // BUSCADORES DE TAREFAS GLOBAIS
 // ==========================================
+// Ordena aulas pelo número extraído do código (ex: "Aula 03" → 3)
+function sortedAulas(aulas) {
+  return [...aulas].sort((a, b) => {
+    const nA = parseInt(a.codigo.replace(/\D/g, '')) || 0;
+    const nB = parseInt(b.codigo.replace(/\D/g, '')) || 0;
+    return nA - nB;
+  });
+}
+
 function allTarefas() {
   return S.disciplinas.flatMap(d =>
-    d.aulas.flatMap(a => a.tarefas.map(t => ({
+    sortedAulas(d.aulas).flatMap(a => a.tarefas.map(t => ({
       ...t, discId: d.id, discNome: d.nome, discCor: d.cor,
       aulaId: a.id, aulaCod: a.codigo, aulaTit: a.titulo
     })))
@@ -208,6 +217,57 @@ function allTarefas() {
 }
 function pendingTarefas()          { return allTarefas().filter(t => t.status === 'pendente'); }
 function getPendingForDisc(discId) { return pendingTarefas().filter(t => t.discId === discId); }
+
+// Retorna tarefas pendentes SOMENTE da primeira aula incompleta da disciplina
+function getSequentialQueue(discId) {
+  const d = S.disciplinas.find(x => x.id === discId);
+  if (!d) return [];
+  // Primeira aula (em ordem) que ainda tem tarefas pendentes
+  const firstPending = sortedAulas(d.aulas)
+    .find(a => a.tarefas.some(t => t.status === 'pendente'));
+  if (!firstPending) return [];
+  return firstPending.tarefas
+    .filter(t => t.status === 'pendente')
+    .map(t => ({
+      ...t, discId: d.id, discNome: d.nome, discCor: d.cor,
+      aulaId: firstPending.id, aulaCod: firstPending.codigo, aulaTit: firstPending.titulo
+    }));
+}
+
+// Round-robin entre disciplinas respeitando o orçamento de minutos do dia
+function buildTodayTasks(totalMins) {
+  const queues = S.disciplinas
+    .map(d => {
+      const tasks = getSequentialQueue(d.id);
+      return tasks.length > 0 ? { tasks } : null;
+    })
+    .filter(Boolean);
+
+  if (queues.length === 0) return [];
+
+  const selected = [];
+  let budget     = totalMins;
+  const MAX      = 100; // safety limit
+  let rounds     = 0;
+
+  while (budget > 0 && rounds < MAX) {
+    rounds++;
+    let addedAny = false;
+    for (const q of queues) {
+      if (!q.tasks.length || budget <= 0) continue;
+      const task = q.tasks[0];
+      // Permite leve estouro (+15min) como o calcMeta original
+      if (task.duracaoMin <= budget + 15) {
+        q.tasks.shift();
+        selected.push(task);
+        budget -= task.duracaoMin;
+        addedAny = true;
+      }
+    }
+    if (!addedAny) break;
+  }
+  return selected;
+}
 
 // ==========================================
 // TRILHA ADAPTATIVA (AGENDA DA SEMANA)
@@ -1194,9 +1254,8 @@ function renderHoje() {
     return;
   }
 
-  // ── Calcula tarefas do dia proporcional às horas ──
-  const data      = calcMeta(totalMins);
-  const todayTasks = data.flatMap(d => d.selected);
+  // ── Tarefas do dia: sequencial por disciplina + round-robin entre elas ──
+  const todayTasks = buildTodayTasks(totalMins);
 
   // Progresso
   const concluidas = allTarefas().filter(t => t.status === 'concluida').length;
