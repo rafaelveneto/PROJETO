@@ -175,6 +175,7 @@ window.goTab = function(name) {
   };
   document.getElementById('pageTitle').textContent = titles[name] || name;
 
+  if (name === 'hoje')        renderHoje();
   if (name === 'questoes')    { populateDiscDropdowns(); renderQuestoes(); }
   if (name === 'meta')        renderAgendaGrid();
   if (name === 'importar')    populateDiscDropdowns();
@@ -267,7 +268,7 @@ window.renderAgendaGrid = function() {
 };
 
 window.updateHoraDia = function(idx, val) {
-  S.config.horasSemana[idx] = Math.max(0, parseInt(val) || 0);
+  S.config.horasSemana[idx] = Math.min(16, Math.max(0, parseInt(val) || 0));
   saveState();
   const totalHoras = S.config.horasSemana.reduce((a, b) => a + b, 0);
   document.getElementById('totalSemanaGrid').textContent = totalHoras + 'h';
@@ -1146,6 +1147,120 @@ window.cancelarXlsx = function() {
 };
 
 // ==========================================
+// TAB HOJE — FOCO DO DIA
+// ==========================================
+function renderHoje() {
+  const today      = new Date().getDay(); // 0=Dom … 6=Sáb
+  const horasHoje  = S.config.horasSemana[today] || 0;
+  const totalMins  = horasHoje * 60;
+  const allPending = pendingTarefas();
+  const horasSem   = S.config.horasSemana.reduce((a, b) => a + b, 0);
+
+  // ── Stats ──
+  document.getElementById('statsGrid').innerHTML = `
+    <div class="sc">
+      <span class="sv">${allPending.length}</span>
+      <span class="sl">Tarefas Pendentes</span>
+    </div>
+    <div class="sc">
+      <span class="sv" style="color:var(--acc)">${horasHoje}h</span>
+      <span class="sl">Horas Hoje</span>
+    </div>
+    <div class="sc">
+      <span class="sv">${horasSem}h</span>
+      <span class="sl">Horas na Semana</span>
+    </div>
+    <div class="sc">
+      <span class="sv">${S.disciplinas.length}</span>
+      <span class="sl">Disciplinas</span>
+    </div>`;
+
+  const hojeBar  = document.getElementById('hojeBar');
+  const hojeList = document.getElementById('hojeList');
+
+  // ── Descanso ──
+  if (horasHoje === 0) {
+    hojeBar.innerHTML  = '';
+    hojeList.innerHTML = `<div style="text-align:center;padding:28px;color:var(--tx3);font-size:13px">
+      🛌 Dia de descanso — recupere as energias!</div>`;
+    return;
+  }
+
+  // ── Sem tarefas cadastradas ──
+  if (allPending.length === 0) {
+    hojeBar.innerHTML  = '';
+    hojeList.innerHTML = `<div style="text-align:center;padding:28px;color:var(--gr);font-size:13px">
+      ✅ Nenhuma tarefa pendente. Cadastre aulas em Disciplinas & PDFs.</div>`;
+    return;
+  }
+
+  // ── Calcula tarefas do dia proporcional às horas ──
+  const data      = calcMeta(totalMins);
+  const todayTasks = data.flatMap(d => d.selected);
+
+  // Progresso
+  const concluidas = allTarefas().filter(t => t.status === 'concluida').length;
+  const total      = allTarefas().length;
+  const pct        = total > 0 ? Math.round((concluidas / total) * 100) : 0;
+  const doneHoje   = todayTasks.filter(t => t.status === 'concluida').length;
+
+  hojeBar.innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px">
+      <span style="font-size:11px;color:var(--tx3)">${doneHoje}/${todayTasks.length} de hoje · ${concluidas}/${total} total</span>
+      <span style="font-size:12px;font-weight:600;color:var(--acc);font-family:monospace">${pct}%</span>
+    </div>
+    <div style="background:var(--bd);border-radius:4px;height:4px;margin-bottom:16px">
+      <div style="background:var(--acc);height:4px;border-radius:4px;width:${pct}%;transition:width .4s"></div>
+    </div>`;
+
+  if (todayTasks.length === 0) {
+    hojeList.innerHTML = `<div style="color:var(--tx3);font-size:13px;padding:12px 0">
+      Sem tarefas alocadas para hoje. Configure a agenda na Trilha Adaptativa.</div>`;
+    return;
+  }
+
+  hojeList.innerHTML = todayTasks.map(t => {
+    const typeInfo      = TYPES[t.type] || TYPES.TEORIA;
+    const done          = t.status === 'concluida';
+    const reforcoFlag   = isReforco(t.discId, t.type);
+    const disc          = S.disciplinas.find(d => d.id === t.discId);
+    return `
+    <div class="ti" onclick="toggleTarefa('${t.discId}','${t.aulaId}','${t.id}')">
+      <div style="
+        width:16px;height:16px;border-radius:4px;flex-shrink:0;
+        border:1.5px solid ${done ? 'var(--gr)' : 'var(--bd2)'};
+        background:${done ? 'var(--gr)' : 'transparent'};
+        display:flex;align-items:center;justify-content:center;transition:all .15s">
+        ${done ? '<svg width="10" height="10" viewBox="0 0 10 10"><path d="M1.5 5L4 7.5L8.5 2.5" stroke="#09090b" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>' : ''}
+      </div>
+      <div class="tb">
+        <div class="tr2">
+          <span class="tag" style="color:${typeInfo.cor};border-color:${typeInfo.cor}30;background:${typeInfo.cor}18">${typeInfo.label}</span>
+          ${reforcoFlag ? '<span class="tag-reforco">⚠️ REFORÇO</span>' : ''}
+          <span style="font-size:10px;color:${disc?.cor || 'var(--tx3)'}">${t.discNome}</span>
+        </div>
+        <div class="tt" style="${done ? 'text-decoration:line-through;color:var(--tx3)' : ''}">
+          ${t.aulaCod} · ${t.topico}
+        </div>
+        <div class="tm">⏱ ${t.duracaoMin}min${t.paginas && t.paginas !== '—' ? ' · 📄 ' + t.paginas : ''}</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+window.toggleTarefa = function(discId, aulaId, tarefaId) {
+  const d = S.disciplinas.find(x => x.id === discId);
+  if (!d) return;
+  const aula   = d.aulas.find(a => a.id === aulaId);
+  if (!aula) return;
+  const tarefa = aula.tarefas.find(t => t.id === tarefaId);
+  if (!tarefa) return;
+  tarefa.status = tarefa.status === 'concluida' ? 'pendente' : 'concluida';
+  saveState();
+  renderHoje();
+};
+
+// ==========================================
 // INICIALIZAÇÃO
 // ==========================================
 function renderAll() {
@@ -1154,6 +1269,7 @@ function renderAll() {
     `${h < 12 ? 'Bom dia' : h < 18 ? 'Boa tarde' : 'Boa noite'}! Foco total rumo à aprovação.`;
 
   renderDiscList();
+  renderHoje();
 
   if (document.getElementById('tab-questoes').classList.contains('active')) renderQuestoes();
 }
