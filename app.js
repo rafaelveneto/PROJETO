@@ -95,7 +95,7 @@ window.logoutFirebase = async function() {
 };
 
 window.pullFirebase = async function(force = false) {
-  if (!currentUser) return;
+  if (!currentUser) { setSyncState('error'); return; }
   setSyncState('syncing');
   try {
     const docSnap = await db.collection('usuarios_pro').doc(currentUser.uid).get();
@@ -110,7 +110,11 @@ window.pullFirebase = async function(force = false) {
       }
     }
     setSyncState('synced');
-  } catch(e) { setSyncState('error'); }
+  } catch(e) {
+    setSyncState('error');
+    console.error('[Firebase pull error]', e);
+    showToast(`Erro de sync: ${e.code || e.message}`, 'error');
+  }
 };
 
 async function pushFirebase() {
@@ -119,7 +123,11 @@ async function pushFirebase() {
   try {
     await db.collection('usuarios_pro').doc(currentUser.uid).set(JSON.parse(JSON.stringify(S)));
     setSyncState('synced');
-  } catch(e) { setSyncState('error'); }
+  } catch(e) {
+    setSyncState('error');
+    console.error('[Firebase push error]', e);
+    showToast(`Erro ao salvar: ${e.code || e.message}`, 'error');
+  }
 }
 
 auth.onAuthStateChanged(user => {
