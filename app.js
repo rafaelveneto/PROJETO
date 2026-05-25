@@ -497,6 +497,26 @@ function renderDiscList() {
         <span class="disc-badge">Peso: ${d.peso}</span>
         <span class="disc-badge">Meta: ${d.metaAcerto || 80}%</span>
         <span class="disc-badge">${d.aulas.length} aula(s)</span>
+        ${d.aulas.length > 0 ? `<button class="btn-icon" style="margin-left:auto" onclick="toggleAulaList('${d.id}')">📂 ver aulas</button>` : ''}
+      </div>
+      <!-- Lista de aulas colapsável -->
+      <div id="disc-aulas-${d.id}" class="disc-aulas-section">
+        ${sortedAulas(d.aulas).map(a => `
+          <div class="aula-row">
+            <div class="aula-row-info">
+              <div class="aula-row-title">${a.codigo} — ${a.titulo}</div>
+              <div class="aula-row-meta">${a.tarefas.length} tarefa(s) · ${a.tarefas.filter(t=>t.status==='concluida').length} concluída(s)</div>
+            </div>
+            <div class="aula-row-actions">
+              ${S.disciplinas.filter(x=>x.id!==d.id).length > 0 ? `
+                <select class="move-disc-select" id="ms-${a.id}">
+                  ${S.disciplinas.filter(x=>x.id!==d.id).map(x=>`<option value="${x.id}">${x.nome}</option>`).join('')}
+                </select>
+                <button class="btn-icon" title="Mover para disciplina selecionada" onclick="moverAula('${d.id}','${a.id}')">↗</button>
+              ` : ''}
+              <button class="btn-icon btn-icon-danger" title="Excluir aula" onclick="deleteAula('${d.id}','${a.id}')">🗑️</button>
+            </div>
+          </div>`).join('')}
       </div>
       <div id="disc-edit-${d.id}" class="disc-edit-form" style="display:none">
         <div class="disc-edit-grid">
@@ -1207,6 +1227,97 @@ window.cancelarXlsx = function() {
 };
 
 // ==========================================
+// HELPERS DE RENDERIZAÇÃO DE TAREFAS
+// ==========================================
+function parseLeiSeca(text) {
+  if (!text) return '';
+  const rows = text.split('\n').filter(r => r.trim() && r.includes('|'));
+  if (!rows.length) return `<p style="font-size:12px;color:var(--tx2);line-height:1.5;white-space:pre-line">${text}</p>`;
+  return `<table class="lei-seca-table">
+    <thead><tr><th>Dispositivo</th><th>Artigos</th><th>Por que cai</th></tr></thead>
+    <tbody>${rows.map(r => {
+      const p = r.split('|').map(s => s.trim());
+      return `<tr>
+        <td class="ls-dispositivo">${p[0]||''}</td>
+        <td class="ls-artigos">${p[1]||''}</td>
+        <td class="ls-motivo">${p[2]||''}</td>
+      </tr>`;
+    }).join('')}</tbody>
+  </table>`;
+}
+
+function parseBizus(text) {
+  if (!text) return '';
+  return text.split('\n')
+    .filter(l => l.trim())
+    .map(b => `<div class="bizu-card">${b.replace(/^[•\-]\s*/,'').trim()}</div>`)
+    .join('');
+}
+
+function parseKeywords(text) {
+  if (!text) return '';
+  return text.replace(/^[•\-]\s*/,'').split(',')
+    .map(k => k.trim()).filter(Boolean)
+    .map(k => `<span class="kw-pill">${k}</span>`).join('');
+}
+
+function renderTaskCard(t, idx) {
+  const typeInfo  = TYPES[t.type] || TYPES.TEORIA;
+  const done      = t.status === 'concluida';
+  const reforco   = isReforco(t.discId, t.type);
+  const disc      = S.disciplinas.find(d => d.id === t.discId);
+  const hasDetail = t.comando || t.leiSeca || t.questoes || t.bizus || t.keywords;
+
+  const fDur = m => { const h = Math.floor(m/60), r = m%60; return h > 0 ? `${h}h${r>0?' '+r+'min':''}` : `${m}min`; };
+  const dMin = t.duracaoMin || 60;
+  const dMax = Math.round(dMin * 1.25);
+
+  const editBadge = (t.statusEdital && !t.statusEdital.toLowerCase().includes('não'))
+    ? '<span class="edital-badge">✅ Edital</span>' : '';
+
+  return `
+  <div class="task-card${done ? ' task-done' : ''}">
+    <div class="task-card-main">
+      <div class="task-chk${done ? ' checked' : ''}" onclick="toggleTarefa('${t.discId}','${t.aulaId}','${t.id}')">
+        ${done ? '<svg width="10" height="10" viewBox="0 0 10 10"><path d="M1.5 5L4 7.5L8.5 2.5" stroke="#09090b" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>' : ''}
+      </div>
+      <div class="task-body">
+        <div class="task-tags">
+          <span class="aula-badge">${t.aulaCod||'A?'}</span>
+          <span class="task-num">Tarefa ${idx+1}</span>
+          <span class="tag" style="color:${typeInfo.cor};border-color:${typeInfo.cor}30;background:${typeInfo.cor}18">${typeInfo.label}</span>
+          ${editBadge}
+          ${reforco ? '<span class="tag-reforco">⚠️ REFORÇO</span>' : ''}
+        </div>
+        <div class="task-title${done ? ' done' : ''}">${t.topico}</div>
+        <div class="task-meta-row">
+          ${t.paginas && t.paginas !== '—' ? `<span>📄 Pág.&nbsp;${t.paginas}</span>` : ''}
+          <span>🕐 ${fDur(dMin)}–${fDur(dMax)}</span>
+          <span style="color:${disc?.cor||'var(--acc)'}">● ${t.discNome}</span>
+        </div>
+      </div>
+      ${hasDetail ? `<button class="detail-btn" onclick="toggleTaskDetail('${t.id}')">▸ detalhes</button>` : ''}
+    </div>
+    ${hasDetail ? `
+    <div class="task-detail" id="td-${t.id}">
+      ${t.comando  ? `<div class="task-section"><div class="task-section-lbl">📖 Comando de Estudo</div><div class="cmd-box">${t.comando}</div></div>` : ''}
+      ${t.leiSeca  ? `<div class="task-section"><div class="task-section-lbl">⚖️ Lei Seca</div>${parseLeiSeca(t.leiSeca)}</div>` : ''}
+      ${t.bizus    ? `<div class="task-section"><div class="task-section-lbl">💡 Bizus</div>${parseBizus(t.bizus)}</div>` : ''}
+      ${t.questoes ? `<div class="task-section"><div class="task-section-lbl">📝 Questões de Fixação</div><p style="font-size:12px;color:var(--tx2);white-space:pre-line;line-height:1.5">${t.questoes}</p></div>` : ''}
+      ${t.keywords ? `<div class="task-section"><div class="task-section-lbl">🔑 Palavras-chave</div><div class="kw-pills">${parseKeywords(t.keywords)}</div></div>` : ''}
+    </div>` : ''}
+  </div>`;
+}
+
+window.toggleTaskDetail = function(id) {
+  const el  = document.getElementById('td-' + id);
+  if (!el) return;
+  el.classList.toggle('open');
+  const btn = el.closest('.task-card')?.querySelector('.detail-btn');
+  if (btn) btn.textContent = el.classList.contains('open') ? '▾ fechar' : '▸ detalhes';
+};
+
+// ==========================================
 // TAB HOJE — FOCO DO DIA
 // ==========================================
 function renderHoje() {
@@ -1263,13 +1374,19 @@ function renderHoje() {
   const pct        = total > 0 ? Math.round((concluidas / total) * 100) : 0;
   const doneHoje   = todayTasks.filter(t => t.status === 'concluida').length;
 
+  const allocMins  = todayTasks.reduce((s, t) => s + (t.duracaoMin||0), 0);
+  const livresMins = Math.max(0, totalMins - allocMins);
+  const barPct     = totalMins > 0 ? Math.min(100, Math.round((allocMins / totalMins) * 100)) : 0;
+
   hojeBar.innerHTML = `
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px">
-      <span style="font-size:11px;color:var(--tx3)">${doneHoje}/${todayTasks.length} de hoje · ${concluidas}/${total} total</span>
-      <span style="font-size:12px;font-weight:600;color:var(--acc);font-family:monospace">${pct}%</span>
-    </div>
-    <div style="background:var(--bd);border-radius:4px;height:4px;margin-bottom:16px">
-      <div style="background:var(--acc);height:4px;border-radius:4px;width:${pct}%;transition:width .4s"></div>
+    <div class="hoje-bar-wrap">
+      <div class="hoje-bar-labels">
+        <span style="font-size:11px;color:var(--tx3)">${fmtMin(allocMins)} alocados · ${doneHoje}/${todayTasks.length} concluídas</span>
+        <span style="font-size:11px;color:var(--tx3)">${fmtMin(livresMins)} livres</span>
+      </div>
+      <div class="hoje-bar-track">
+        <div class="hoje-bar-fill" style="width:${barPct}%"></div>
+      </div>
     </div>`;
 
   if (todayTasks.length === 0) {
@@ -1278,33 +1395,7 @@ function renderHoje() {
     return;
   }
 
-  hojeList.innerHTML = todayTasks.map(t => {
-    const typeInfo      = TYPES[t.type] || TYPES.TEORIA;
-    const done          = t.status === 'concluida';
-    const reforcoFlag   = isReforco(t.discId, t.type);
-    const disc          = S.disciplinas.find(d => d.id === t.discId);
-    return `
-    <div class="ti" onclick="toggleTarefa('${t.discId}','${t.aulaId}','${t.id}')">
-      <div style="
-        width:16px;height:16px;border-radius:4px;flex-shrink:0;
-        border:1.5px solid ${done ? 'var(--gr)' : 'var(--bd2)'};
-        background:${done ? 'var(--gr)' : 'transparent'};
-        display:flex;align-items:center;justify-content:center;transition:all .15s">
-        ${done ? '<svg width="10" height="10" viewBox="0 0 10 10"><path d="M1.5 5L4 7.5L8.5 2.5" stroke="#09090b" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>' : ''}
-      </div>
-      <div class="tb">
-        <div class="tr2">
-          <span class="tag" style="color:${typeInfo.cor};border-color:${typeInfo.cor}30;background:${typeInfo.cor}18">${typeInfo.label}</span>
-          ${reforcoFlag ? '<span class="tag-reforco">⚠️ REFORÇO</span>' : ''}
-          <span style="font-size:10px;color:${disc?.cor || 'var(--tx3)'}">${t.discNome}</span>
-        </div>
-        <div class="tt" style="${done ? 'text-decoration:line-through;color:var(--tx3)' : ''}">
-          ${t.aulaCod} · ${t.topico}
-        </div>
-        <div class="tm">⏱ ${t.duracaoMin}min${t.paginas && t.paginas !== '—' ? ' · 📄 ' + t.paginas : ''}</div>
-      </div>
-    </div>`;
-  }).join('');
+  hojeList.innerHTML = todayTasks.map((t, i) => renderTaskCard(t, i)).join('');
 }
 
 window.toggleTarefa = function(discId, aulaId, tarefaId) {
@@ -1317,6 +1408,42 @@ window.toggleTarefa = function(discId, aulaId, tarefaId) {
   tarefa.status = tarefa.status === 'concluida' ? 'pendente' : 'concluida';
   saveState();
   renderHoje();
+};
+
+// ==========================================
+// GESTÃO DE AULAS — CRUD
+// ==========================================
+window.toggleAulaList = function(discId) {
+  const el = document.getElementById('disc-aulas-' + discId);
+  if (el) el.classList.toggle('open');
+};
+
+window.deleteAula = function(discId, aulaId) {
+  const d    = S.disciplinas.find(x => x.id === discId);
+  const aula = d?.aulas.find(a => a.id === aulaId);
+  if (!d || !aula) return;
+  if (!confirm(`Excluir "${aula.codigo} — ${aula.titulo}" e todas as suas ${aula.tarefas.length} tarefa(s)?\nEsta ação não pode ser desfeita.`)) return;
+  d.aulas = d.aulas.filter(a => a.id !== aulaId);
+  saveState();
+  renderDiscList();
+  renderHoje();
+  showToast('Aula excluída.', 'info');
+};
+
+window.moverAula = function(fromDiscId, aulaId) {
+  const toDiscId = document.getElementById('ms-' + aulaId)?.value;
+  if (!toDiscId) return;
+  const from = S.disciplinas.find(d => d.id === fromDiscId);
+  const to   = S.disciplinas.find(d => d.id === toDiscId);
+  if (!from || !to) return;
+  const aula = from.aulas.find(a => a.id === aulaId);
+  if (!aula) return;
+  from.aulas = from.aulas.filter(a => a.id !== aulaId);
+  to.aulas.push(aula);
+  saveState();
+  renderDiscList();
+  renderHoje();
+  showToast(`Aula movida para "${to.nome}"!`);
 };
 
 // ==========================================
