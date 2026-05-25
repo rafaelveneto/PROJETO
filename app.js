@@ -1,5 +1,5 @@
 // ==========================================
-// CONFIGURAÇÃO DO FIREBASE (Coloque suas chaves reais)
+// CONFIGURAÇÃO DO FIREBASE
 // ==========================================
 const firebaseConfig = {
   apiKey: "AIzaSyCdjd_0Ubn1d7JFfAOX5lNjghsdMetp3vU",
@@ -27,7 +27,7 @@ const TYPES = {
 };
 
 const SEED = {
-  config: { lastModified: Date.now() },
+  config: { lastModified: Date.now(), horasSemana: [0,4,4,4,4,4,2] },
   disciplinas: [
     {id:'port', nome:'Língua Portuguesa', peso:20, metaAcerto:85, cor:'#3266ad', aulas:[]},
     {id:'dir', nome:'Direito Administrativo', peso:30, metaAcerto:80, cor:'#D85A30', aulas:[]}
@@ -35,10 +35,11 @@ const SEED = {
   questoes_history: []
 };
 
-// Mock de inteligência competitiva
 const MOCK_GLOBAL_STATS = { avgAcertoGeral: 76.5, avgVolumeMensal: 1250, disciplinas: {} };
 
 let S = JSON.parse(localStorage.getItem('aprovado-v6')) || SEED;
+if(!S.config.horasSemana) S.config.horasSemana = [0,4,4,4,4,4,2];
+
 let currentUser = null;
 let qPeriod = 'all';
 let qChartInstance = null;
@@ -60,16 +61,8 @@ function saveState() {
   pushFirebase();
 }
 
-window.loginFirebase = async function() {
-  await auth.signInWithPopup(new firebase.auth.GoogleAuthProvider());
-}
-
-window.logoutFirebase = async function() {
-  if(confirm("Deseja sair?")) { 
-    await auth.signOut(); 
-    location.reload(); 
-  }
-}
+window.loginFirebase = async function() { await auth.signInWithPopup(new firebase.auth.GoogleAuthProvider()); }
+window.logoutFirebase = async function() { if(confirm("Deseja sair?")) { await auth.signOut(); location.reload(); } }
 
 window.pullFirebase = async function(force = false) {
   if(!currentUser) return;
@@ -80,6 +73,7 @@ window.pullFirebase = async function(force = false) {
       const remote = docSnap.data();
       if(force || remote.config?.lastModified > S.config.lastModified) {
         S = remote;
+        if(!S.config.horasSemana) S.config.horasSemana = [0,4,4,4,4,4,2];
         if(!S.questoes_history) S.questoes_history = [];
         saveState();
         renderAll();
@@ -113,7 +107,7 @@ auth.onAuthStateChanged(user => {
 });
 
 // ==========================================
-// INTERFACE E ROTAS SIMPLES
+// INTERFACE E ROTAS
 // ==========================================
 const uid = ()=>Math.random().toString(36).slice(2,9);
 function fmtMin(m){ const h=Math.floor(m/60),r=m%60; return r?`${h}h ${r}m`:`${h}h`; }
@@ -137,7 +131,9 @@ window.goTab = function(name) {
   document.getElementById('pageTitle').textContent = titles[name] || name;
   
   if(name === 'questoes') renderQuestoes();
-  if(name === 'meta') renderMeta();
+  if(name === 'meta') renderAgendaGrid(); // Apenas renderiza o grid, espera o clique para gerar meta
+  if(name === 'importar') populateDiscDropdowns();
+  
   closeSidebar();
 }
 
@@ -164,7 +160,19 @@ window.updateDisc = function(id, field, val) {
 }
 
 // ==========================================
-// LÓGICA DE NEGÓCIO E MOTORES INTELIGENTES
+// BUSCADORES DE TAREFAS GLOBAIS
+// ==========================================
+function allTarefas() {
+  return S.disciplinas.flatMap(d => d.aulas.flatMap(a => a.tarefas.map(t => ({
+    ...t, discId: d.id, discNome: d.nome, discCor: d.cor, 
+    aulaId: a.id, aulaCod: a.codigo, aulaTit: a.titulo
+  }))));
+}
+function pendingTarefas() { return allTarefas().filter(t => t.status === 'pendente'); }
+function getPendingForDisc(discId) { return pendingTarefas().filter(t => t.discId === discId); }
+
+// ==========================================
+// TRILHA ADAPTATIVA (AGENDA DA SEMANA)
 // ==========================================
 function getLatestStatsForDisc(discName) {
   if (!S.questoes_history || S.questoes_history.length === 0) return null;
@@ -172,35 +180,6 @@ function getLatestStatsForDisc(discName) {
   return latestImport.disciplinas.find(d => d.nome.toLowerCase() === discName.toLowerCase());
 }
 
-function taskCard(t) {
-  const tcfg = TYPES[t.type] || TYPES.TEORIA;
-  let badgeReforco = '';
-  
-  // ALERTA DE OVERLAP: Só avisa se for hora de praticar e a proficiência estiver ruim
-  if(t.type === 'QUESTOES' || t.type === 'REVISAO') {
-     const stats = getLatestStatsForDisc(t.discNome);
-     const discConf = S.disciplinas.find(x => x.id === t.discId);
-     const meta = discConf?.metaAcerto || 80;
-     if(stats && stats.pctAcerto < meta) {
-        badgeReforco = `<span class="tag-reforco">⚠️ REFORÇO CRÍTICO (${Math.round(stats.pctAcerto)}% Tec)</span>`;
-     }
-  }
-
-  return `
-  <div class="ti">
-    <div class="tb">
-      <div class="tr2">
-        <span class="tag tag-disc" style="color:${t.discCor}">${t.aulaCod || 'A00'}</span>
-        <span class="tag" style="background:${tcfg.cor}22;color:${tcfg.cor}">${tcfg.label}</span>
-        ${badgeReforco}
-      </div>
-      <div class="tt">${t.topico}</div>
-      <div class="tm">⏱ ${fmtMin(t.duracaoMin)}</div>
-    </div>
-  </div>`;
-}
-
-// Algoritmo adaptativo de Trilha
 function calcMeta(totalMins) {
   let discData = S.disciplinas.map(d => {
     const stats = getLatestStatsForDisc(d.nome);
@@ -208,25 +187,66 @@ function calcMeta(totalMins) {
     const metaUsuario = d.metaAcerto || 80;
     
     if (stats) {
-      if (stats.pctAcerto >= metaUsuario + 5) currentWeight *= 0.85; // Manutenção
-      else if (stats.pctAcerto < metaUsuario - 5) currentWeight *= 1.25; // Reforço Crítico
+      if (stats.pctAcerto >= metaUsuario + 5) currentWeight *= 0.85; 
+      else if (stats.pctAcerto < metaUsuario - 5) currentWeight *= 1.25; 
     }
-    return { disc: d, rawWeight: d.peso, adjWeight: currentWeight };
+    return { disc: d, rawWeight: d.peso, adjWeight: currentWeight, tasks: getPendingForDisc(d.id) };
   });
 
   const totalAdjWeight = discData.reduce((s, d) => s + d.adjWeight, 0);
   discData.forEach(d => {
     d.alloc = totalAdjWeight > 0 ? Math.round(totalMins * (d.adjWeight / totalAdjWeight)) : 0;
   });
+  
+  discData.forEach(d => {
+    let bud = d.alloc;
+    d.selected = [];
+    for(let t of d.tasks) {
+      if(bud <= 0) break;
+      if(t.duracaoMin <= bud + 15) { d.selected.push(t); bud -= t.duracaoMin; }
+    }
+  });
+
   return discData;
 }
 
-window.renderMeta = function() {
-  const totalMins = Math.round((parseFloat(document.getElementById('metaHoras').value) || 24) * 60);
-  const data = calcMeta(totalMins);
+window.renderAgendaGrid = function() {
+  const hs = S.config.horasSemana;
+  const diasStr = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
+  const totalHoras = hs.reduce((a,b)=>a+b, 0);
   
-  let html = `<div class="card"><div class="ct">Alocação de Tempo Baseada em Desempenho</div>`;
+  let gridHtml = `<div class="day-grid">`;
+  diasStr.forEach((d, i) => {
+     gridHtml += `
+     <div class="day-cell">
+       <div class="day-nm">${d}</div>
+       <input type="number" class="day-hi" value="${hs[i]}" min="0" max="14" onchange="updateHoraDia(${i}, this.value)">
+     </div>`;
+  });
+  gridHtml += `</div>
+  <div class="meta-label" style="text-align:right; margin-top:8px;">Total Planejado: <strong id="totalSemanaGrid">${totalHoras}h</strong></div>`;
+  document.getElementById('semanaGridContainer').innerHTML = gridHtml;
+}
+
+window.updateHoraDia = function(idx, val) {
+  S.config.horasSemana[idx] = Math.max(0, parseInt(val) || 0);
+  saveState();
+  const totalHoras = S.config.horasSemana.reduce((a,b)=>a+b, 0);
+  document.getElementById('totalSemanaGrid').textContent = totalHoras + 'h';
+}
+
+window.renderMeta = function() {
+  const totalMins = S.config.horasSemana.reduce((a,b)=>a+b, 0) * 60;
+  if(totalMins === 0) {
+    document.getElementById('metaContent').innerHTML = `<div class="empty">Preencha as horas na agenda acima para gerar a meta.</div>`;
+    return;
+  }
+
+  const data = calcMeta(totalMins);
+  let html = `<div class="card" style="margin-top: 20px;"><div class="ct">Alocação Baseada em Desempenho</div>`;
+  
   data.forEach(d => {
+    if(d.selected.length === 0) return;
     const stats = getLatestStatsForDisc(d.disc.nome);
     const currAcc = stats ? stats.pctAcerto : '--';
     const isBuffed = d.adjWeight > d.rawWeight;
@@ -238,14 +258,89 @@ window.renderMeta = function() {
         <div style="font-size:13px;color:var(--tx)">${d.disc.nome} ${indic}</div>
         <div style="font-size:10px;color:var(--tx3)">Acerto Atual: ${currAcc}% | Meta: ${d.disc.metaAcerto}%</div>
       </div>
-      <span style="color:var(--acc); font-family:monospace; font-size:14px; font-weight:600">${fmtMin(d.alloc)}</span>
+      <div style="text-align:right;">
+        <div style="color:var(--acc); font-family:monospace; font-size:14px; font-weight:600">${fmtMin(d.alloc)}</div>
+        <div style="font-size:9px; color:var(--tx3)">${d.selected.length} tarefas</div>
+      </div>
     </div>`;
   });
   html += `</div>`;
   document.getElementById('metaContent').innerHTML = html;
 }
 
-// Motor de Diagnóstico e Benchmarking Multidimensional
+// IMPRESSÃO DE AGENDA
+window.imprimirAgenda = function() {
+  const hs = S.config.horasSemana;
+  const totalMins = hs.reduce((a,b)=>a+b, 0) * 60;
+  if(totalMins === 0) { alert("Sua agenda está com 0 horas. Preencha a grade da semana."); return; }
+
+  const daysFull = ['Domingo', 'Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado'];
+  const data = calcMeta(totalMins);
+  
+  let allTasks = [];
+  data.forEach(d => { if(d.selected) allTasks.push(...d.selected); });
+  allTasks = allTasks.sort(() => Math.random() - 0.5);
+
+  let printHtml = `
+    <div class="print-header">
+      <h1>Trilha Estratégica: Agenda da Semana</h1>
+      <p>Gerado em ${new Date().toLocaleDateString('pt-BR')} · Total: ${totalMins/60}h programadas.</p>
+    </div>
+  `;
+
+  let taskIdx = 0;
+  hs.forEach((hours, i) => {
+    if(hours === 0) {
+      printHtml += `<div class="print-day">
+        <div class="print-day-header"><h2>${daysFull[i]}</h2><span>DESCANSO</span></div>
+      </div>`;
+      return;
+    }
+
+    let dayBud = hours * 60;
+    let dayTasks = [];
+    while(taskIdx < allTasks.length && dayBud > 0) {
+      let t = allTasks[taskIdx];
+      if(t.duracaoMin <= dayBud + 15) {
+        dayTasks.push(t);
+        dayBud -= t.duracaoMin;
+        taskIdx++;
+      } else {
+        if(dayTasks.length === 0) { dayTasks.push(t); dayBud -= t.duracaoMin; taskIdx++; }
+        break; 
+      }
+    }
+
+    printHtml += `
+    <div class="print-day">
+      <div class="print-day-header"><h2>${daysFull[i]}</h2><span>Meta: ${hours}h</span></div>
+      <ul class="print-task-list">`;
+
+    if(dayTasks.length === 0) {
+      printHtml += `<li style="font-size:12px; color:#666;">Nenhuma tarefa alocada para hoje.</li>`;
+    } else {
+      dayTasks.forEach(t => {
+        printHtml += `
+        <li class="print-task-item">
+          <div class="print-checkbox"></div>
+          <div class="print-task-content">
+            <span class="print-disc-badge" style="background:${t.discCor}">${t.discNome}</span>
+            <div class="print-task-title">[${t.aulaCod || 'A00'}] ${t.topico}</div>
+            <div class="print-task-meta">${t.type} · ⏱ ${t.duracaoMin} min</div>
+          </div>
+        </li>`;
+      });
+    }
+    printHtml += `</ul></div>`;
+  });
+
+  document.getElementById('printArea').innerHTML = printHtml;
+  window.print();
+}
+
+// ==========================================
+// ANALYTICS & BENCHMARKING (GURUJA STYLE)
+// ==========================================
 window.renderQuestoes = function() {
   const container = document.getElementById('questoesContent');
   if (!S.questoes_history || S.questoes_history.length === 0) {
@@ -329,7 +424,6 @@ window.renderQuestoes = function() {
 
   container.innerHTML = html;
   
-  // INJETANDO O CHART.JS MULTIDIMENSIONAL
   setTimeout(() => {
     const ctx = document.getElementById('qChartAdvanced').getContext('2d');
     if(qChartInstance) qChartInstance.destroy();
@@ -361,24 +455,116 @@ window.renderQuestoes = function() {
   }, 100);
 }
 
-function renderAll() {
-  const h = new Date().getHours();
-  document.getElementById('saudBlock').textContent = `${h<12?'Bom dia':h<18?'Boa tarde':'Boa noite'}! Foco total rumo à aprovação.`;
-  
-  document.getElementById('discList').innerHTML = S.disciplinas.map(d => `
-    <div style="background:var(--s2); border:1px solid var(--bd); padding:12px; margin-bottom:8px; border-radius:8px; display:flex; justify-content:space-between;">
-      <div><strong style="color:${d.cor}">${d.nome}</strong><br><span style="font-size:11px;color:var(--tx3)">Peso: ${d.peso} | Meta: ${d.metaAcerto||80}%</span></div>
-      <div>${d.aulas.length} Aulas</div>
-    </div>
-  `).join('');
-
-  if(document.getElementById('tab-questoes').classList.contains('active')) renderQuestoes();
+// ==========================================
+// MÓDULOS DE IMPORTAÇÃO (NLM, MANUAL, XLSX)
+// ==========================================
+window.switchImp = function(mode, btn) {
+  document.querySelectorAll('.imp-tab').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.imp-panel').forEach(p => p.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('imp-'+mode).classList.add('active');
+  if(mode === 'form') initForm();
+  populateDiscDropdowns();
 }
 
-// ==========================================
-// IMPORTADOR TECCONCURSOS (PARSER XLSX)
-// ==========================================
-window.lerXlsx = function(input){
+window.populateDiscDropdowns = function() {
+  const opts = S.disciplinas.map(d => `<option value="${d.id}">${d.nome}</option>`).join('');
+  if(document.getElementById('nlm-disc')) document.getElementById('nlm-disc').innerHTML = opts;
+  if(document.getElementById('f-disc')) document.getElementById('f-disc').innerHTML = opts;
+}
+
+// PARSER: NotebookLM
+let _parsedTasks = [];
+window.parsearNLM = function() {
+  const txt = document.getElementById('nlm-txt').value;
+  const cod = document.getElementById('nlm-cod').value.trim();
+  const tit = document.getElementById('nlm-tit').value.trim();
+  if(!txt.trim() || !cod || !tit) { alert('Preencha Código, Título e cole o texto do NLM.'); return; }
+  
+  _parsedTasks = [];
+  // Regex adaptado ao Prompt Mestre do NLM do usuário
+  const blocks = txt.split(/(?=\n?#{0,5}\s*TAREFA\s+\d+\s*[—\-])/i).filter(b=>b.trim()&&/TAREFA\s+\d+/i.test(b));
+  
+  blocks.forEach((block,i) => {
+    const hm = block.match(/TAREFA\s+(\d+)\s*[—\-]+\s*([A-Z_]+)/i);
+    const type = hm ? hm[2].toUpperCase().trim() : 'TEORIA';
+    const finalType = ['TEORIA','LEI_SECA','TEORIA_LEI','QUESTOES','REVISAO'].includes(type) ? type : 'TEORIA';
+    
+    const pagM = block.match(/P[áa]ginas.*?:?\s*([\d]+[\s–\-]+[\d]+)/i);
+    const paginas = pagM ? pagM[1].replace(/\s/g,'–') : '—';
+    
+    const durM = block.match(/dura[çc][ãa]o.*?:?\s*(\d+)\s*[–\-]\s*(\d+)/i);
+    const durMin = durM ? parseInt(durM[1]) : 60;
+    
+    const topM = block.match(/T[óo]pico.*?principal.*?:?\s*(.+)/i);
+    const topico = topM ? topM[1].replace(/\*\*/g,'').trim() : `Tarefa ${i+1}`;
+    
+    _parsedTasks.push({
+      id: uid(), label: `Tarefa ${i+1}`, type: finalType, paginas, topico, duracaoMin: durMin, status: 'pendente'
+    });
+  });
+
+  if(!_parsedTasks.length) { alert('Nenhuma tarefa encontrada. Verifique o formato do texto.'); return; }
+  
+  const discId = document.getElementById('nlm-disc').value;
+  const disc = S.disciplinas.find(d => d.id === discId);
+  
+  let html = `<div class="parse-preview"><div style="color:var(--gr);margin-bottom:12px">✔ ${_parsedTasks.length} tarefa(s) encontrada(s)</div>`;
+  _parsedTasks.forEach(t => {
+     html += `<div style="background:var(--bg); border:1px solid var(--bd); padding:8px; margin-bottom:4px; font-size:12px;">[${t.type}] ${t.topico} (⏱ ${t.duracaoMin}m)</div>`;
+  });
+  html += `<div style="margin-top:14px;"><button class="btn btn-p" onclick="confirmarNLM()">✔ Confirmar Importação</button></div></div>`;
+  document.getElementById('nlm-preview').innerHTML = html;
+}
+
+window.confirmarNLM = function() {
+  const discId = document.getElementById('nlm-disc').value;
+  const cod = document.getElementById('nlm-cod').value.trim();
+  const tit = document.getElementById('nlm-tit').value.trim();
+  const d = S.disciplinas.find(x => x.id === discId);
+  if(!d) return;
+  
+  d.aulas.push({ id: uid(), codigo: cod, titulo: tit, tarefas: _parsedTasks });
+  saveState();
+  document.getElementById('nlm-cod').value = ''; document.getElementById('nlm-tit').value = ''; document.getElementById('nlm-txt').value = ''; document.getElementById('nlm-preview').innerHTML = '';
+  alert("Tarefas importadas com sucesso!");
+  goTab('disciplinas'); renderAll();
+}
+
+// MANUAL FORM
+let tfForms = [];
+window.initForm = function() { tfForms = [{id:uid()}]; renderForms(); }
+window.addTF = function() { tfForms.push({id:uid()}); renderForms(); }
+window.renderForms = function() {
+  const typeOpts = Object.keys(TYPES).map(k=>`<option value="${k}">${TYPES[k].label}</option>`).join('');
+  document.getElementById('tfList').innerHTML = tfForms.map((t,i)=>`
+    <div class="tblock">
+      <div class="tbh"><span style="color:var(--acc);font-weight:600">Tarefa ${i+1}</span></div>
+      <div class="fg2">
+        <div class="fg"><label>Tipo</label><select id="ty-${t.id}">${typeOpts}</select></div>
+        <div class="fg"><label>Duração (min)</label><input id="du-${t.id}" type="number" value="60"></div>
+        <div class="fg full"><label>Tópico</label><input id="tp-${t.id}"></div>
+      </div>
+    </div>`).join('');
+}
+window.salvarManual = function() {
+  const discId = document.getElementById('f-disc').value, cod = document.getElementById('f-cod').value, tit = document.getElementById('f-tit').value;
+  if(!cod || !tit) { alert("Preencha Código e Título."); return; }
+  const d = S.disciplinas.find(x => x.id === discId);
+  
+  const tarefas = tfForms.map((t,i) => {
+    return {
+      id: uid(), label: `Tarefa ${i+1}`, type: document.getElementById('ty-'+t.id).value, 
+      topico: document.getElementById('tp-'+t.id).value || `Tarefa ${i+1}`,
+      duracaoMin: parseInt(document.getElementById('du-'+t.id).value) || 60, status: 'pendente'
+    };
+  });
+  d.aulas.push({ id: uid(), codigo: cod, titulo: tit, tarefas });
+  saveState(); goTab('disciplinas'); renderAll();
+}
+
+// EXCEL (TECCONCURSOS)
+window.lerXlsx = function(input) {
   const file = input.files[0]; if(!file) return;
   const reader = new FileReader();
   reader.onload = e => {
@@ -414,5 +600,21 @@ window.lerXlsx = function(input){
   reader.readAsArrayBuffer(file);
 }
 
-// Kickstart local
+// ==========================================
+// INICIALIZAÇÃO
+// ==========================================
+function renderAll() {
+  const h = new Date().getHours();
+  document.getElementById('saudBlock').textContent = `${h<12?'Bom dia':h<18?'Boa tarde':'Boa noite'}! Foco total rumo à aprovação.`;
+  
+  document.getElementById('discList').innerHTML = S.disciplinas.map(d => `
+    <div style="background:var(--s2); border:1px solid var(--bd); padding:12px; margin-bottom:8px; border-radius:8px; display:flex; justify-content:space-between;">
+      <div><strong style="color:${d.cor}">${d.nome}</strong><br><span style="font-size:11px;color:var(--tx3)">Peso: ${d.peso} | Meta: ${d.metaAcerto||80}%</span></div>
+      <div>${d.aulas.length} Aulas</div>
+    </div>
+  `).join('');
+
+  if(document.getElementById('tab-questoes').classList.contains('active')) renderQuestoes();
+}
+
 renderAll();

@@ -44,14 +44,14 @@
     <nav class="sb-nav">
       <div class="nav-section">Ciclo de Estudos</div>
       <button class="nav-item active" id="nav-hoje" onclick="goTab('hoje')">Hoje</button>
-      <button class="nav-item" id="nav-meta" onclick="goTab('meta')">Trilha Semanal</button>
+      <button class="nav-item" id="nav-meta" onclick="goTab('meta')">Trilha Adaptativa</button>
       
       <div class="nav-section">Inteligência & Benchmarking</div>
       <button class="nav-item" id="nav-questoes" onclick="goTab('questoes')">Motor de Análise</button>
       
       <div class="nav-section">Setup</div>
       <button class="nav-item" id="nav-disciplinas" onclick="goTab('disciplinas')">Disciplinas & PDFs</button>
-      <button class="nav-item" id="nav-importar" onclick="goTab('importar')">Importar Dados (Tec)</button>
+      <button class="nav-item" id="nav-importar" onclick="goTab('importar')">Importar Dados</button>
     </nav>
     
     <div class="sb-footer">
@@ -92,16 +92,22 @@
 
       <div id="tab-meta" class="tab">
         <div class="sh">
-          <div class="stit">Trilha Horária Semana</div>
-          <div style="display:flex;align-items:center;gap:10px;">
-            <span class="meta-label">Horas/Ciclo:</span>
-            <input type="number" id="metaHoras" class="hrs-input" value="24" min="1" max="80">
-            <button class="btn btn-p" onclick="renderMeta()">Gerar Alocação ↻</button>
+          <div class="stit">Trilha Estratégica Adaptativa</div>
+          <button class="btn btn-g" onclick="imprimirAgenda()" style="color:var(--tx)">🖨️ Imprimir Agenda</button>
+        </div>
+        
+        <div class="card">
+          <div class="ct">Agenda da Semana (Horas por Dia)</div>
+          <div id="semanaGridContainer"></div>
+          <div style="margin-top:20px; text-align:right; border-top: 1px solid var(--bd); padding-top: 14px;">
+            <button class="btn btn-p" onclick="renderMeta()">⚡ Gerar Meta da Semana</button>
           </div>
         </div>
+        
         <div class="alert-box alert-info">
           O algoritmo ajusta o tempo baseando-se na sua proficiência no TecConcursos: matérias com alto acerto perdem carga (modo manutenção); matérias fracas ganham carga extra.
         </div>
+        
         <div id="metaContent"></div>
       </div>
 
@@ -129,20 +135,71 @@
       </div>
 
       <div id="tab-importar" class="tab">
-        <div class="stit" style="margin-bottom:14px">Importar Estatísticas do TecConcursos</div>
-        <div class="card">
-          <div class="alert-box alert-info">
-            Vá no TecConcursos > Estatísticas > Atividades > Exportar (Excel). Faça o upload do arquivo .xlsx aqui para alimentar o motor de inteligência.
-          </div>
-          <input type="file" id="xls-file" accept=".xlsx,.xls" onchange="lerXlsx(this)" style="margin-bottom:10px;">
-          <input type="text" id="xls-label" placeholder="Rótulo (Ex: Simulado Módulo 1)" style="width:100%">
-          <div id="xls-preview" style="margin-top:14px"></div>
+        <div class="stit" style="margin-bottom:14px">Importar Conteúdo e Dados</div>
+        
+        <div class="imp-tabs">
+          <button class="imp-tab active" onclick="switchImp('nlm',this)">📋 Mapeador NotebookLM</button>
+          <button class="imp-tab" onclick="switchImp('form',this)">✏️ Formulário Manual</button>
+          <button class="imp-tab" onclick="switchImp('xlsx',this)">📊 Estatísticas TecConcursos</button>
         </div>
+        
+        <div id="imp-nlm" class="imp-panel active">
+          <div class="card">
+            <div class="ct">Identificação</div>
+            <div class="fg2">
+              <div class="fg"><label>Disciplina</label><select id="nlm-disc"></select></div>
+              <div class="fg"><label>Código da Aula</label><input id="nlm-cod" placeholder="Ex: Aula 03"></div>
+              <div class="fg full"><label>Título</label><input id="nlm-tit" placeholder="Ex: Plenário – Sessões"></div>
+            </div>
+          </div>
+          <div class="card">
+            <div class="ct">Output do NotebookLM</div>
+            <textarea id="nlm-txt" style="min-height:160px;font-family:monospace;font-size:11px" placeholder="Cole aqui o texto completo gerado pelo Prompt Mestre do NotebookLM..."></textarea>
+            <div style="margin-top:10px;display:flex;gap:8px">
+              <button class="btn btn-p" onclick="parsearNLM()">🔍 Parsear</button>
+              <button class="btn btn-g" onclick="document.getElementById('nlm-txt').value=''">Limpar</button>
+            </div>
+            <div id="nlm-preview"></div>
+          </div>
+        </div>
+
+        <div id="imp-form" class="imp-panel">
+          <div class="card">
+            <div class="ct">Identificação</div>
+            <div class="fg2">
+              <div class="fg"><label>Disciplina</label><select id="f-disc"></select></div>
+              <div class="fg"><label>Código</label><input id="f-cod" placeholder="Ex: Aula 03"></div>
+              <div class="fg full"><label>Título</label><input id="f-tit"></div>
+            </div>
+          </div>
+          <div class="card">
+            <div class="ct">Tarefas</div>
+            <div id="tfList"></div>
+            <button class="btn btn-g" onclick="addTF()">+ Adicionar Tarefa</button>
+          </div>
+          <div style="display:flex;gap:10px;justify-content:flex-end">
+            <button class="btn btn-p" onclick="salvarManual()">✔ Salvar Manual</button>
+          </div>
+        </div>
+
+        <div id="imp-xlsx" class="imp-panel">
+          <div class="card">
+            <div class="alert-box alert-info">
+              Vá no TecConcursos > Estatísticas > Atividades > Exportar (Excel). Faça o upload do arquivo .xlsx aqui para alimentar o motor de inteligência.
+            </div>
+            <input type="file" id="xls-file" accept=".xlsx,.xls" onchange="lerXlsx(this)" style="margin-bottom:10px;">
+            <input type="text" id="xls-label" placeholder="Rótulo (Ex: Simulado Módulo 1)" style="width:100%">
+            <div id="xls-preview" style="margin-top:14px"></div>
+          </div>
+        </div>
+
       </div>
 
     </main>
   </div>
 </div>
+
+<div id="printArea" style="display:none;"></div>
 
 <div id="modal-settings" class="modal-bg">
   <div class="modal">
