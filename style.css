@@ -503,3 +503,11 @@ input:focus, textarea:focus, select:focus { border-color:var(--acc); }
   border: 1px solid currentColor;
   white-space: nowrap;
 }
+
+/* ── Revisões Pendentes no Histórico/Progresso ── */
+.rev-prazo {
+  font-size: 10px; font-weight: 600;
+  padding: 2px 7px; border-radius: 3px;
+  background: rgba(234,179,8,.1); color: var(--yl);
+  border: 1px solid rgba(234,179,8,.3);
+}

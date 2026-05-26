@@ -38,6 +38,14 @@ if (!S.config)            S.config = {};
 if (!S.config.horasSemana) S.config.horasSemana = [0,4,4,4,4,4,2];
 if (!S.questoes_history)   S.questoes_history   = [];
 if (!S.disciplinas)        S.disciplinas        = [];
+// Configurações de revisão (editáveis pelo usuário)
+if (!S.config.revisao) S.config.revisao = {
+  limiteUrgente: 60,  // abaixo disso → revisão em diasUrgente
+  limiteMedio:   75,  // abaixo disso → revisão em diasMedio
+  diasUrgente:   2,
+  diasMedio:     7,
+  diasBom:       14
+};
 
 let currentUser    = null;
 let qPeriod        = 'all';
@@ -367,6 +375,38 @@ function renderHoje() {
       :`<div style="text-align:center;padding:28px;color:var(--tx3);font-size:13px">📚 Nenhuma disciplina com aulas ainda.<br><br><button class="btn btn-p" onclick="goTab('planejamento')">Ir para Planejamento</button></div>`;
     return;
   }
+  // ── Seção de Revisões Pendentes ──
+  const revPend = getRevisoesPendentes();
+  if (revPend.length > 0) {
+    const revCard = document.createElement('div');
+    revCard.className = 'card'; revCard.style.marginBottom='14px';
+    const atrasoStr = t => {
+      const dias = Math.floor((Date.now() - new Date(t.proximaRevisaoEm)) / 864e5);
+      return dias <= 0 ? 'hoje' : `há ${dias} dia(s)`;
+    };
+    revCard.innerHTML = `
+      <div class="ct" style="color:var(--yl)">⏰ Revisões Pendentes (${revPend.length})</div>
+      ${revPend.map(t=>`
+        <div class="rev-item" style="border-left-color:${t.pctAcerto<60?'var(--re)':t.pctAcerto<75?'var(--yl)':'var(--gr)'}">
+          <div>
+            <div style="display:flex;align-items:center;gap:6px;margin-bottom:3px">
+              <span class="aula-badge">${t.aulaCod||'A?'}</span>
+              <span style="font-size:12px;font-weight:500;color:var(--tx)">${t.topico}</span>
+            </div>
+            <div style="font-size:10px;color:var(--tx3)">
+              <span style="color:${t.discCor}">● ${t.discNome}</span>
+              &nbsp;·&nbsp; Acerto: <span style="color:${t.pctAcerto>=70?'var(--gr)':'var(--re)'}">
+                ${t.pctAcerto}%</span>
+              &nbsp;·&nbsp; Venceu ${atrasoStr(t)}
+            </div>
+          </div>
+          <button class="btn btn-g" style="padding:4px 10px;font-size:11px;flex-shrink:0"
+            onclick="marcarRevisao('${t.discId}','${t.aulaId}','${t.id}')">✔ Revisado</button>
+        </div>`).join('')}`;
+    const card = document.getElementById('hojeBar');
+    card.parentNode.insertBefore(revCard, card);
+  }
+
   const todayTasks=buildTodayTasks(totalMins);
   const allocMins=todayTasks.reduce((s,t)=>s+(t.duracaoMin||0),0);
   const livresMins=Math.max(0,totalMins-allocMins);
@@ -410,9 +450,40 @@ window.salvarAcerto = function(discId,aulaId,tarefaId) {
   if (qA>qR){ showToast('Acertos não pode ser maior que o total de questões.','error'); return; }
   tarefa.qRespondidas=qR; tarefa.qAcertos=qA;
   tarefa.pctAcerto=qR>0?Math.round(qA/qR*100):0;
-  saveState(); showToast(`${qA}/${qR} questões · ${tarefa.pctAcerto}% de acerto salvo!`);
+
+  // Agenda revisão automática usando configurações do usuário
+  const pct = tarefa.pctAcerto;
+  const rv  = S.config.revisao || { limiteUrgente:60, limiteMedio:75, diasUrgente:2, diasMedio:7, diasBom:14 };
+  const dias = pct < rv.limiteUrgente ? rv.diasUrgente : pct < rv.limiteMedio ? rv.diasMedio : rv.diasBom;
+  tarefa.proximaRevisaoEm = new Date(Date.now() + dias * 864e5).toISOString();
+  tarefa.revisaoAulaRef   = aula.codigo || '';
+  tarefa.revisaoDiscNome  = d.nome || '';
+
+  const emoji = pct < rv.limiteUrgente ? '🔴' : pct < rv.limiteMedio ? '🟡' : '🟢';
+  const label = `${emoji} ${dias} dias`;
+  saveState();
+  showToast(`${qA}/${qR} · ${pct}% salvo — revisão agendada: ${label}`);
   renderHoje();
 };
+
+window.marcarRevisao = function(discId,aulaId,tarefaId) {
+  const d=(S.disciplinas||[]).find(x=>x.id===discId);
+  const aula=(d?.aulas||[]).find(a=>a.id===aulaId);
+  const tarefa=(aula?.tarefas||[]).find(t=>t.id===tarefaId); if (!tarefa) return;
+  delete tarefa.proximaRevisaoEm;
+  delete tarefa.revisaoAulaRef;
+  delete tarefa.revisaoDiscNome;
+  saveState(); renderHoje(); showToast('Revisão concluída ✅');
+};
+
+// Retorna tarefas de Questões com revisão vencida ou no prazo hoje
+function getRevisoesPendentes() {
+  const now = new Date();
+  return allTarefas().filter(t =>
+    t.proximaRevisaoEm &&
+    new Date(t.proximaRevisaoEm) <= now
+  ).sort((a,b) => new Date(a.proximaRevisaoEm) - new Date(b.proximaRevisaoEm));
+}
 
 // ============================================================
 // TAB: HISTÓRICO
@@ -533,6 +604,66 @@ window.simularProgresso = function() {
 };
 
 // ============================================================
+// CONFIGURAÇÕES DE REVISÃO
+// ============================================================
+function renderConfigRevisao() {
+  const rv = S.config.revisao || { limiteUrgente:60, limiteMedio:75, diasUrgente:2, diasMedio:7, diasBom:14 };
+  const el = document.getElementById('configRevisaoBody'); if (!el) return;
+  el.innerHTML = `
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-top:10px">
+      <div>
+        <div style="font-size:10px;color:var(--re);font-weight:700;margin-bottom:6px">🔴 URGENTE</div>
+        <div class="fg" style="margin-bottom:6px"><label>Acerto abaixo de (%)</label>
+          <input type="number" id="rv-limUrgente" value="${rv.limiteUrgente}" min="1" max="99" style="width:100%"></div>
+        <div class="fg"><label>Revisar em (dias)</label>
+          <input type="number" id="rv-diasUrgente" value="${rv.diasUrgente}" min="1" max="30" style="width:100%"></div>
+      </div>
+      <div>
+        <div style="font-size:10px;color:var(--yl);font-weight:700;margin-bottom:6px">🟡 MÉDIO</div>
+        <div class="fg" style="margin-bottom:6px"><label>Acerto abaixo de (%)</label>
+          <input type="number" id="rv-limMedio" value="${rv.limiteMedio}" min="1" max="100" style="width:100%"></div>
+        <div class="fg"><label>Revisar em (dias)</label>
+          <input type="number" id="rv-diasMedio" value="${rv.diasMedio}" min="1" max="60" style="width:100%"></div>
+      </div>
+      <div>
+        <div style="font-size:10px;color:var(--gr);font-weight:700;margin-bottom:6px">🟢 BOM</div>
+        <div class="fg" style="margin-bottom:6px"><label>Acerto ≥ Médio</label>
+          <div style="padding:8px 10px;background:var(--s3);border-radius:6px;font-size:12px;color:var(--tx3)">automático</div></div>
+        <div class="fg"><label>Revisar em (dias)</label>
+          <input type="number" id="rv-diasBom" value="${rv.diasBom}" min="1" max="90" style="width:100%"></div>
+      </div>
+    </div>
+    <div style="margin-top:12px;font-size:11px;color:var(--tx3)">
+      Ex. atual: &lt;${rv.limiteUrgente}% → ${rv.diasUrgente}d · ${rv.limiteUrgente}–${rv.limiteMedio}% → ${rv.diasMedio}d · ≥${rv.limiteMedio}% → ${rv.diasBom}d
+    </div>
+    <div style="display:flex;gap:8px;margin-top:12px;justify-content:flex-end">
+      <button class="btn btn-p" onclick="salvarConfigRevisao()">✔ Salvar</button>
+    </div>`;
+}
+
+window.salvarConfigRevisao = function() {
+  const lu = parseInt(document.getElementById('rv-limUrgente')?.value)||60;
+  const lm = parseInt(document.getElementById('rv-limMedio')?.value)||75;
+  const du = parseInt(document.getElementById('rv-diasUrgente')?.value)||2;
+  const dm = parseInt(document.getElementById('rv-diasMedio')?.value)||7;
+  const db_ = parseInt(document.getElementById('rv-diasBom')?.value)||14;
+  if (lu >= lm){ showToast('Limiar urgente deve ser menor que o médio.','error'); return; }
+  S.config.revisao = { limiteUrgente:lu, limiteMedio:lm, diasUrgente:du, diasMedio:dm, diasBom:db_ };
+  saveState(); renderConfigRevisao();
+  showToast('Configuração de revisão salva!');
+};
+
+window.toggleConfigRevisao = function() {
+  const body = document.getElementById('configRevisaoBody');
+  const btn  = document.getElementById('configRevisaoBtn');
+  if (!body) return;
+  const open = body.style.display !== 'none';
+  body.style.display = open ? 'none' : 'block';
+  btn.textContent = open ? '▸ expandir' : '▾ recolher';
+  if (!open) renderConfigRevisao();
+};
+
+// ============================================================
 // PLANEJAMENTO — TRILHA
 // ============================================================
 function calcMeta(totalMins) {
@@ -542,8 +673,23 @@ function calcMeta(totalMins) {
 }
 window.renderAgendaGrid = function() {
   const hs=S.config.horasSemana||[0,4,4,4,4,4,2], dias=['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
+  const rv = S.config.revisao || { limiteUrgente:60, limiteMedio:75, diasUrgente:2, diasMedio:7, diasBom:14 };
   document.getElementById('semanaGridContainer').innerHTML=`<div class="day-grid">${dias.map((d,i)=>`<div class="day-cell"><div class="day-nm">${d}</div><input type="number" class="day-hi" value="${hs[i]}" min="0" max="16" onchange="updateHoraDia(${i},this.value)"></div>`).join('')}</div>
-  <div class="meta-label" style="text-align:right;margin-top:8px">Total Planejado: <strong id="totalSemanaGrid">${hs.reduce((a,b)=>a+b,0)}h</strong></div>`;
+  <div class="meta-label" style="text-align:right;margin-top:8px">Total Planejado: <strong id="totalSemanaGrid">${hs.reduce((a,b)=>a+b,0)}h</strong></div>
+  <div class="card" style="margin-top:16px;background:var(--s2);border:1px solid var(--bd)">
+    <div style="display:flex;justify-content:space-between;align-items:center">
+      <div>
+        <div class="ct" style="margin-bottom:2px">🔁 Intervalos de Revisão</div>
+        <div style="font-size:11px;color:var(--tx3)">
+          🔴 &lt;${rv.limiteUrgente}% → ${rv.diasUrgente}d &nbsp;·&nbsp;
+          🟡 &lt;${rv.limiteMedio}% → ${rv.diasMedio}d &nbsp;·&nbsp;
+          🟢 ≥${rv.limiteMedio}% → ${rv.diasBom}d
+        </div>
+      </div>
+      <button id="configRevisaoBtn" class="btn btn-g" style="font-size:11px" onclick="toggleConfigRevisao()">▸ expandir</button>
+    </div>
+    <div id="configRevisaoBody" style="display:none"></div>
+  </div>`;
 };
 window.updateHoraDia = function(idx,val) { S.config.horasSemana[idx]=Math.min(16,Math.max(0,parseInt(val)||0)); saveState(); document.getElementById('totalSemanaGrid').textContent=S.config.horasSemana.reduce((a,b)=>a+b,0)+'h'; };
 window.renderMeta = function() {
