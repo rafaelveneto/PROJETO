@@ -34,7 +34,7 @@ const NIVEL_LABEL = {
 const NIVEL_WEIGHT = { nunca:1.35, comecei:1.15, terminei:1.0, aparar:0.85 };
 const MOCK_GLOBAL  = { avgAcerto:76.5 };
 const SEED = {
-  config:{ lastModified:Date.now(), horasSemana:[0,4,4,4,4,4,2] },
+  config:{ lastModified:0, horasSemana:[0,4,4,4,4,4,2] },
   disciplinas:[], questoes_history:[]
 };
 
@@ -161,13 +161,18 @@ window.pullFirebase   = async function(force=false) {
     const snap=await db.collection('usuarios_pro').doc(currentUser.uid).get();
     if (snap.exists) {
       const r=snap.data();
-      if (force||(r.config?.lastModified>S.config.lastModified)){
+      const localVazio = !S.disciplinas?.length;
+      const remoteTemDados = r.disciplinas?.length > 0;
+      if (force || localVazio || (r.config?.lastModified>S.config.lastModified)){
         S=r;
         if (!S.config.horasSemana) S.config.horasSemana=[0,4,4,4,4,4,2];
         if (!S.questoes_history)   S.questoes_history=[];
         if (!S.disciplinas)        S.disciplinas=[];
         saveState(); renderAll();
+        if (force) showToast(remoteTemDados ? `✅ ${S.disciplinas.length} disciplina(s) restaurada(s)!` : '⚠️ Firebase também está vazio.', remoteTemDados?'success':'info');
       }
+    } else {
+      if (force) showToast('⚠️ Documento não encontrado no Firebase.','info');
     }
     setSyncState('synced');
   } catch(e){ setSyncState('error'); showToast(`Erro de sync: ${e.code||e.message}`,'error'); }
@@ -343,7 +348,15 @@ function renderHoje() {
 
   const hojeBar=document.getElementById('hojeBar'), hojeList=document.getElementById('hojeList');
   if (horasHoje===0){ hojeBar.innerHTML=''; hojeList.innerHTML=`<div style="text-align:center;padding:28px;color:var(--tx3);font-size:13px">🛌 Dia de descanso — recupere as energias!</div>`; return; }
-  if (!allP.length){ hojeBar.innerHTML=''; hojeList.innerHTML=`<div style="text-align:center;padding:28px;color:var(--gr);font-size:13px">✅ Todas as tarefas concluídas!</div>`; return; }
+  if (!allP.length){
+    hojeBar.innerHTML='';
+    const temDisc = S.disciplinas?.some(d=>d.aulas?.length>0);
+    hojeList.innerHTML = temDisc
+      ? `<div style="text-align:center;padding:28px;color:var(--gr);font-size:13px">✅ Todas as tarefas concluídas! Importe mais aulas em Planejamento → Importar.</div>`
+      : `<div style="text-align:center;padding:28px;color:var(--tx3);font-size:13px">📚 Nenhuma disciplina cadastrada ainda.<br><br>
+          <button class="btn btn-p" onclick="goTab('planejamento')">Ir para Planejamento</button></div>`;
+    return;
+  }
 
   const todayTasks=buildTodayTasks(totalMins);
   const allocMins=todayTasks.reduce((s,t)=>s+(t.duracaoMin||0),0);
@@ -987,6 +1000,16 @@ function renderAll() {
   document.getElementById('saudBlock').textContent=`${h<12?'Bom dia':h<18?'Boa tarde':'Boa noite'}! Foco total rumo à aprovação.`;
   renderHoje();
   renderDiscList();
+  // Avisa se dados não foram carregados ainda
+  if (currentUser && !S.disciplinas?.length) {
+    const el=document.getElementById('discList');
+    if (el) el.innerHTML=`<div class="alert-box alert-info" style="margin-top:8px">
+      Dados não encontrados localmente. 
+      <button class="btn btn-p" style="margin-left:10px;padding:5px 12px;font-size:12px" onclick="pullFirebase(true).then(()=>renderAll())">
+        ↓ Restaurar do Firebase
+      </button>
+    </div>`;
+  }
   if (document.getElementById('tab-questoes')?.classList.contains('active'))  renderQuestoes();
   if (document.getElementById('tab-progresso')?.classList.contains('active')) renderProgresso();
   if (document.getElementById('tab-historico')?.classList.contains('active')) renderHistorico();
