@@ -391,3 +391,81 @@ input:focus, textarea:focus, select:focus { border-color:var(--acc); }
 .aula-row-meta { font-size:10px; color:var(--tx3); margin-top:1px; }
 .aula-row-actions { display:flex; align-items:center; gap:5px; flex-shrink:0; }
 .move-disc-select { background:var(--bg); border:1px solid var(--bd2); border-radius:4px; color:var(--tx2); font-size:11px; padding:3px 6px; font-family:'Inter',sans-serif; max-width:130px; }
+
+/* ════════════════════════════════════
+   PLAN TABS (Planejamento unificado)
+   ════════════════════════════════════ */
+.plan-tabs { display:flex; gap:6px; margin-bottom:20px; border-bottom:1px solid var(--bd); padding-bottom:0; }
+.plan-tab {
+  background:transparent; border:none; border-bottom:2px solid transparent;
+  color:var(--tx3); font-family:'Inter',sans-serif; font-size:13px; font-weight:500;
+  padding:10px 16px; cursor:pointer; transition:all .15s; margin-bottom:-1px;
+}
+.plan-tab:hover { color:var(--tx); }
+.plan-tab.active { color:var(--acc); border-bottom-color:var(--acc); font-weight:600; }
+.plan-panel { display:none; }
+.plan-panel.active { display:block; }
+
+/* ════════════════════════════════════
+   TEMPLATES
+   ════════════════════════════════════ */
+.template-card {
+  background:var(--s2); border:1px solid var(--bd); border-radius:var(--r);
+  padding:16px; margin-bottom:10px; transition:border-color .15s;
+}
+.template-card:hover { border-color:var(--bd2); }
+.template-header { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; margin-bottom:10px; }
+.template-nome { font-size:14px; font-weight:600; color:var(--tx); margin-bottom:3px; }
+.template-meta { font-size:11px; color:var(--tx3); }
+.template-discs { display:flex; flex-wrap:wrap; gap:5px; }
+.disc-badge-sm {
+  font-size:10px; font-weight:600; padding:2px 8px; border-radius:4px;
+  border:1px solid transparent;
+}
+.own-badge { background:var(--acc-b); color:var(--acc); font-size:9px; font-weight:700; padding:1px 6px; border-radius:3px; }
+
+/* ════════════════════════════════════
+   PROGRESSO & PREVISÃO
+   ════════════════════════════════════ */
+.disc-prog-row { margin-bottom:16px; }
+.disc-prog-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:4px; }
+.disc-prog-bar-track { background:var(--bd); border-radius:4px; height:6px; }
+.disc-prog-bar-fill { height:6px; border-radius:4px; transition:width .5s; }
+.disc-aula-dots { display:flex; gap:3px; margin-top:5px; flex-wrap:wrap; }
+.aula-dot {
+  width:14px; height:14px; border-radius:3px; cursor:pointer; transition:opacity .15s;
+}
+.aula-dot:hover { opacity:.7; }
+
+/* Simulador */
+.sim-box { background:var(--s2); border:1px solid var(--bd); border-radius:var(--r); padding:14px 16px; margin-top:10px; }
+.sim-result-val { font-size:20px; font-weight:700; color:var(--acc); font-family:'JetBrains Mono',monospace; margin-bottom:3px; }
+
+/* ════════════════════════════════════
+   HISTÓRICO
+   ════════════════════════════════════ */
+.hist-task-row {
+  display:flex; align-items:center; justify-content:space-between;
+  padding:8px 0; border-bottom:1px solid var(--bd);
+}
+.hist-task-row:last-child { border-bottom:none; }
+.hist-task-info { flex:1; min-width:0; }
+.hist-task-title { font-size:12px; font-weight:500; color:var(--tx); margin-bottom:2px; }
+.hist-task-meta { font-size:10px; color:var(--tx3); }
+
+/* ════════════════════════════════════
+   NÍVEL DE CONHECIMENTO BADGE
+   ════════════════════════════════════ */
+.nivel-badge {
+  font-size:10px; padding:2px 7px; border-radius:3px;
+  font-weight:600; display:inline-block;
+}
+.nivel-nunca    { background:rgba(239,68,68,.1);   color:#ef4444; }
+.nivel-comecei  { background:rgba(234,179,8,.1);   color:#eab308; }
+.nivel-terminei { background:rgba(249,115,22,.1);  color:#f97316; }
+.nivel-aparar   { background:rgba(34,197,94,.1);   color:#22c55e; }
+
+@media(max-width:680px){
+  .plan-tabs { overflow-x:auto; }
+  .tec-preview-grid { grid-template-columns:1fr 1fr; }
+}
