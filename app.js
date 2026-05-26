@@ -134,14 +134,20 @@ function setSyncState(state) {
 
 function applyFirebaseData(r) {
   if (!r) return false;
-  const temDados=(r.disciplinas?.length||0)>0||(r.questoes_history?.length||0)>0;
-  if (!temDados) return false;
-  S=r;
-  if (!S.config)             S.config={};
-  if (!S.config.horasSemana) S.config.horasSemana=[0,4,4,4,4,4,2];
-  if (!S.questoes_history)   S.questoes_history=[];
-  if (!S.disciplinas)        S.disciplinas=[];
-  localStorage.setItem('aprovado-v6',JSON.stringify(S));
+  // Aplica SEMPRE — sem condição — o que vier do Firebase
+  S = r;
+  if (!S.config)             S.config = {};
+  if (!S.config.horasSemana) S.config.horasSemana = [0,4,4,4,4,4,2];
+  if (!S.questoes_history)   S.questoes_history = [];
+  if (!S.disciplinas)        S.disciplinas = [];
+  // Garante que aulas seja sempre array em cada disciplina
+  S.disciplinas = S.disciplinas.map(d => ({
+    ...d, aulas: Array.isArray(d.aulas) ? d.aulas.map(a => ({
+      ...a, tarefas: Array.isArray(a.tarefas) ? a.tarefas : []
+    })) : []
+  }));
+  localStorage.setItem('aprovado-v6', JSON.stringify(S));
+  console.log('[applyFirebaseData] aplicado! disciplinas:', S.disciplinas.length);
   return true;
 }
 
@@ -320,6 +326,14 @@ function renderTaskCard(t,idx) {
       ${t.bizus?`<div class="task-section"><div class="task-section-lbl">💡 Bizus</div>${parseBizus(t.bizus)}</div>`:''}
       ${t.questoes?`<div class="task-section"><div class="task-section-lbl">📝 Questões de Fixação</div><p style="font-size:12px;color:var(--tx2);white-space:pre-line;line-height:1.5">${t.questoes}</p></div>`:''}
       ${t.keywords?`<div class="task-section"><div class="task-section-lbl">🔑 Palavras-chave</div><div class="kw-pills">${parseKeywords(t.keywords)}</div></div>`:''}
+      ${t.type==='QUESTOES'?`<div class="task-section"><div class="task-section-lbl">📊 Registro de Desempenho</div>
+        <div class="acerto-inline">
+          <div class="fg"><label>Questões</label><input type="number" id="qr-${t.id}" value="${t.qRespondidas||''}" min="0" placeholder="Ex: 30" oninput="calcPctAcerto('${t.id}')"></div>
+          <div class="fg"><label>Acertos</label><input type="number" id="qa-${t.id}" value="${t.qAcertos||''}" min="0" placeholder="Ex: 21" oninput="calcPctAcerto('${t.id}')"></div>
+          <div class="fg"><label>% Acerto</label><div id="qpct-${t.id}" class="pct-display" style="color:${(t.pctAcerto||0)>=70?'var(--gr)':'var(--tx3)'}">${t.pctAcerto!=null?t.pctAcerto+'%':'—'}</div></div>
+          <button class="btn btn-p" style="padding:7px 14px;font-size:11px;align-self:end" onclick="salvarAcerto('${t.discId}','${t.aulaId}','${t.id}')">Salvar</button>
+        </div>
+      </div>`:''}
     </div>`:''}
   </div>`;
 }
@@ -373,34 +387,32 @@ window.toggleTarefa = function(discId,aulaId,tarefaId) {
   const d=(S.disciplinas||[]).find(x=>x.id===discId); if (!d) return;
   const aula=(d.aulas||[]).find(a=>a.id===aulaId); if (!aula) return;
   const tarefa=(aula.tarefas||[]).find(t=>t.id===tarefaId); if (!tarefa) return;
-  if (tarefa.status!=='concluida'&&tarefa.type==='QUESTOES') {
-    _pendingToggle={discId,aulaId,tarefaId};
-    document.getElementById('acerto-input').value='';
-    document.getElementById('modal-acerto').classList.add('open');
-    setTimeout(()=>document.getElementById('acerto-input')?.focus(),100);
-    return;
-  }
-  _completeTarefa(discId,aulaId,tarefaId,null);
-};
-window.confirmarAcerto = function(save) {
-  if (!_pendingToggle) return;
-  const pct=save?(parseInt(document.getElementById('acerto-input').value)||null):null;
-  const {discId,aulaId,tarefaId}=_pendingToggle; _pendingToggle=null;
-  document.getElementById('modal-acerto').classList.remove('open');
-  _completeTarefa(discId,aulaId,tarefaId,pct);
-};
-function _completeTarefa(discId,aulaId,tarefaId,acertoPct) {
-  const d=(S.disciplinas||[]).find(x=>x.id===discId);
-  const aula=(d?.aulas||[]).find(a=>a.id===aulaId);
-  const tarefa=(aula?.tarefas||[]).find(t=>t.id===tarefaId); if (!tarefa) return;
   tarefa.status=tarefa.status==='concluida'?'pendente':'concluida';
-  if (acertoPct!==null&&tarefa.status==='concluida') tarefa.acertoQuestoes=acertoPct;
-  if (tarefa.status==='pendente') delete tarefa.acertoQuestoes;
   saveState(); renderHoje();
   if (document.getElementById('tab-historico')?.classList.contains('active')) renderHistorico();
   if (document.getElementById('tab-progresso')?.classList.contains('active'))  renderProgresso();
-}
-document.addEventListener('keydown',e=>{ if (document.getElementById('modal-acerto')?.classList.contains('open')){ if (e.key==='Enter') confirmarAcerto(true); if (e.key==='Escape') confirmarAcerto(false); } });
+};
+
+// Registro inline de acertos em tarefas de Questões
+window.calcPctAcerto = function(tarefaId) {
+  const qR=parseInt(document.getElementById('qr-'+tarefaId)?.value)||0;
+  const qA=parseInt(document.getElementById('qa-'+tarefaId)?.value)||0;
+  const pct=qR>0?Math.round(qA/qR*100):0;
+  const el=document.getElementById('qpct-'+tarefaId);
+  if (el){ el.textContent=qR>0?pct+'%':'—'; el.style.color=pct>=70?'var(--gr)':'var(--re)'; }
+};
+window.salvarAcerto = function(discId,aulaId,tarefaId) {
+  const d=(S.disciplinas||[]).find(x=>x.id===discId);
+  const aula=(d?.aulas||[]).find(a=>a.id===aulaId);
+  const tarefa=(aula?.tarefas||[]).find(t=>t.id===tarefaId); if (!tarefa) return;
+  const qR=parseInt(document.getElementById('qr-'+tarefaId)?.value)||0;
+  const qA=parseInt(document.getElementById('qa-'+tarefaId)?.value)||0;
+  if (qA>qR){ showToast('Acertos não pode ser maior que o total de questões.','error'); return; }
+  tarefa.qRespondidas=qR; tarefa.qAcertos=qA;
+  tarefa.pctAcerto=qR>0?Math.round(qA/qR*100):0;
+  saveState(); showToast(`${qA}/${qR} questões · ${tarefa.pctAcerto}% de acerto salvo!`);
+  renderHoje();
+};
 
 // ============================================================
 // TAB: HISTÓRICO
@@ -415,7 +427,7 @@ function renderHistorico() {
   Object.values(grouped).forEach(g=>{
     html+=`<div class="card"><div style="display:flex;align-items:center;gap:8px;margin-bottom:10px"><div style="width:10px;height:10px;border-radius:50%;background:${g.cor}"></div><span style="font-size:14px;font-weight:600;color:var(--tx)">${g.nome}</span><span class="disc-badge">${g.tasks.length} concluída(s)</span></div>
       ${g.tasks.map(t=>`<div class="hist-task-row"><div class="hist-task-info"><div style="display:flex;align-items:center;gap:6px;margin-bottom:2px"><span class="aula-badge">${t.aulaCod}</span><span class="hist-task-title">${t.topico}</span></div>
-        <div class="hist-task-meta">${TYPES[t.type]?.label||t.type} · ${t.duracaoMin}min${t.acertoQuestoes!=null?` · <span style="color:${t.acertoQuestoes>=70?'var(--gr)':'var(--re)'}">⚡ ${t.acertoQuestoes}% acerto</span>`:''}</div></div>
+        <div class="hist-task-meta">${TYPES[t.type]?.label||t.type} · ${t.duracaoMin}min${t.pctAcerto!=null?` · <span style="color:${t.pctAcerto>=70?'var(--gr)':'var(--re)'}">⚡ ${t.qAcertos||0}/${t.qRespondidas||0} (${t.pctAcerto}%)</span>`:''}</div></div>
         <button class="btn btn-g" style="padding:4px 10px;font-size:11px;flex-shrink:0" onclick="toggleTarefa('${t.discId}','${t.aulaId}','${t.id}')">↩ Desfazer</button>
       </div>`).join('')}</div>`;
   });

@@ -469,3 +469,27 @@ input:focus, textarea:focus, select:focus { border-color:var(--acc); }
   .plan-tabs { overflow-x:auto; }
   .tec-preview-grid { grid-template-columns:1fr 1fr; }
 }
+
+/* ── Registro de Acerto Inline (Questões) ── */
+.acerto-inline {
+  display: grid;
+  grid-template-columns: 1fr 1fr 80px auto;
+  gap: 8px;
+  align-items: end;
+  margin-top: 4px;
+}
+.pct-display {
+  background: var(--s3);
+  border: 1px solid var(--bd);
+  border-radius: 6px;
+  padding: 8px 10px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 16px;
+  font-weight: 700;
+  text-align: center;
+  min-width: 60px;
+}
+@media(max-width:600px){
+  .acerto-inline { grid-template-columns: 1fr 1fr; }
+  .pct-display { grid-column: 1/-1; }
+}
