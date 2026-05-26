@@ -434,19 +434,25 @@ function renderHoje() {
     var secColor = isHoje ? 'var(--acc)' : 'var(--tx3)';
 
     html += '<div style="margin-bottom:' + (isHoje?'24':'18') + 'px">';
-    // Cabeçalho do dia — fundo colorido para ser visível
-    var bgHdr = isHoje ? 'rgba(245,166,35,.1)' : 'transparent';
-    var bdHdr = isHoje ? 'var(--acc)' : 'var(--bd)';
-    html += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;padding:7px 10px;background:' + bgHdr + ';border-left:3px solid ' + bdHdr + ';border-radius:0 6px 6px 0">';
-    html += '<span style="font-size:12px;font-weight:700;color:' + secColor + ';text-transform:uppercase;letter-spacing:.06em">' + (isHoje ? '📌 Hoje' : '📅 ' + day.nome) + '</span>';
-    html += '<span style="font-size:12px;color:var(--tx3)">' + dateStr + '</span>';
-    html += '<span style="font-size:11px;color:var(--tx3);margin-left:auto">' + (day.horas > 0 ? day.horas + 'h' : 'folga') + '</span>';
-    html += '</div>';
+    // Cabeçalho do dia
+    if (isHoje) {
+      html += '<div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;padding:10px 14px;background:rgba(245,166,35,.15);border:1px solid rgba(245,166,35,.3);border-radius:8px">';
+      html += '<span style="font-size:13px;font-weight:700;color:#f5a623">📌 Hoje</span>';
+      html += '<span style="font-size:13px;font-weight:600;color:#e4e4e7">' + dateStr + '</span>';
+      html += '<span style="font-size:12px;color:#a1a1aa;margin-left:auto">' + day.horas + 'h programadas</span>';
+      html += '</div>';
+    } else {
+      html += '<div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;padding:8px 12px;background:#18181b;border:1px solid #3f3f46;border-radius:8px">';
+      html += '<span style="font-size:12px;font-weight:700;color:#d4d4d8">📅 ' + day.nome + '</span>';
+      html += '<span style="font-size:12px;color:#a1a1aa">' + dateStr + '</span>';
+      html += '<span style="font-size:11px;color:#71717a;margin-left:auto">' + (day.horas > 0 ? day.horas + 'h' : 'folga') + '</span>';
+      html += '</div>';
+    }
 
     if (day.horas === 0) {
-      html += '<div style="padding:12px 0;text-align:center;color:var(--tx3);font-size:13px">🛌 Dia de descanso</div>';
+      html += '<div style="padding:12px 16px;text-align:center;color:#71717a;font-size:13px;background:#111114;border-radius:6px;margin-bottom:4px">🛌 Dia de descanso</div>';
     } else if (!day.tasks || day.tasks.length === 0) {
-      html += '<div style="padding:8px 0;color:var(--tx3);font-size:12px">Sem tarefas pendentes.</div>';
+      html += '<div style="padding:10px 14px;color:#a1a1aa;font-size:12px;background:#111114;border-radius:6px;margin-bottom:4px">— Sem tarefas pendentes para este dia</div>';
     } else if (isHoje) {
       // Cards completos com detalhes para hoje
       for (var j=0; j<day.tasks.length; j++) { html += renderTaskCard(day.tasks[j], j); }
@@ -458,11 +464,11 @@ function renderHoje() {
         var dis = null;
         var ds = S.disciplinas||[]; for(var k=0;k<ds.length;k++){if(ds[k].id===t.discId){dis=ds[k];break;}}
         var cor = (dis && dis.cor) ? dis.cor : 'var(--acc)';
-        html += '<div style="display:flex;align-items:center;gap:8px;padding:6px 10px;background:var(--s2);border:1px solid var(--bd);border-left:3px solid '+cor+';border-radius:6px;margin-bottom:5px">';
-        html += '<span class="aula-badge" style="font-size:9px">'+(t.aulaCod||'A?')+'</span>';
-        html += '<span style="font-size:9px;color:'+ti.cor+'">'+ti.label+'</span>';
-        html += '<span style="font-size:12px;color:var(--tx);flex:1;overflow:hidden;white-space:nowrap;text-overflow:ellipsis">'+(t.topico||'—')+'</span>';
-        html += '<span style="font-size:10px;color:var(--tx3);flex-shrink:0">⏱ '+(t.duracaoMin||0)+'min</span>';
+        html += '<div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:#1c1c1f;border:1px solid #3f3f46;border-left:3px solid '+cor+';border-radius:6px;margin-bottom:6px">';
+        html += '<span style="background:rgba(245,166,35,.18);color:#f5a623;font-size:9px;font-weight:700;padding:2px 6px;border-radius:4px;white-space:nowrap">'+(t.aulaCod||'A?')+'</span>';
+        html += '<span style="font-size:9px;font-weight:600;color:'+ti.cor+';white-space:nowrap">'+ti.label+'</span>';
+        html += '<span style="font-size:12px;color:#e4e4e7;flex:1;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;font-weight:500">'+(t.topico||'—')+'</span>';
+        html += '<span style="font-size:10px;color:#a1a1aa;flex-shrink:0;white-space:nowrap">⏱ '+(t.duracaoMin||0)+'min</span>';
         html += '</div>';
       }
     }

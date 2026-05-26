@@ -578,3 +578,164 @@ input:focus, textarea:focus, select:focus { border-color:var(--acc); }
 @media(max-width:680px){
   .week-col { min-width: 130px; }
 }
+
+/* ════════════════════════════════════
+   REDESIGN UI — CONTRASTE & LEGIBILIDADE
+   ════════════════════════════════════ */
+
+/* Override nas variáveis para melhor contraste */
+:root {
+  --tx2: #d4d4d8;   /* texto secundário mais legível */
+  --tx3: #a1a1aa;   /* texto terciário menos apagado */
+  --s2:  #1c1c1f;   /* cards ligeiramente mais claros */
+  --bd:  #3f3f46;   /* bordas mais visíveis */
+  --bd2: #52525b;   /* bordas de foco */
+}
+
+/* Cards com bordas mais definidas */
+.card {
+  background: #18181b;
+  border: 1px solid #3f3f46;
+  border-radius: 10px;
+  padding: 18px;
+  margin-bottom: 14px;
+}
+
+/* Stat cards (0%, feitas, etc.) */
+.sc {
+  background: #1c1c1f;
+  border: 1px solid #3f3f46;
+  border-radius: 10px;
+  padding: 16px;
+}
+.sv { color: #e4e4e7; }
+.sl { color: #a1a1aa; font-size: 10px; letter-spacing: .07em; }
+
+/* Section labels mais legíveis */
+.ct {
+  color: #a1a1aa;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .12em;
+  margin-bottom: 14px;
+}
+
+/* Task cards */
+.task-card {
+  background: #1c1c1f;
+  border: 1px solid #3f3f46;
+  border-radius: 8px;
+  margin-bottom: 8px;
+}
+.task-card:hover { border-color: #52525b; }
+
+.task-title  { font-size: 14px; font-weight: 500; color: #f4f4f5; }
+.task-num    { font-size: 10px; color: #71717a; }
+.task-meta-row { font-size: 11px; color: #a1a1aa; }
+
+/* Checkbox */
+.task-chk { border-color: #52525b; }
+.task-chk:hover:not(.checked) { border-color: #22c55e; }
+
+/* Detail sections */
+.task-detail { background: #111114; border-top-color: #3f3f46; }
+.task-section-lbl { color: #a1a1aa; }
+.cmd-box { background: rgba(59,130,246,.1); border-left-color: #3b82f6; color: #d4d4d8; }
+.bizu-card { background: rgba(245,166,35,.08); border-left-color: #f5a623; color: #d4d4d8; }
+.kw-pill { background: #27272a; border-color: #3f3f46; color: #d4d4d8; }
+
+/* Lei seca table */
+.lei-seca-table th { color: #a1a1aa; border-bottom-color: #3f3f46; }
+.lei-seca-table td { border-bottom-color: #27272a; }
+.ls-motivo { color: #d4d4d8; }
+
+/* Barra de progresso do dia */
+.hoje-bar-track { background: #27272a; height: 5px; }
+.hoje-bar-fill  { background: linear-gradient(90deg, #f5a623, #f59e0b); height: 5px; }
+
+/* Sidebar */
+.sidebar { background: #0f0f12; border-right-color: #27272a; }
+.nav-section { color: #71717a; }
+.nav-item { color: #a1a1aa; font-size: 13px; }
+.nav-item:hover { background: #1c1c1f; color: #f4f4f5; }
+.nav-item.active { background: rgba(245,166,35,.12); color: #f5a623; }
+
+/* Topbar */
+.app-topbar { background: #0f0f12; border-bottom-color: #27272a; }
+.page-title { font-size: 16px; font-weight: 600; color: #f4f4f5; }
+.sync-pill { background: #1c1c1f; border-color: #3f3f46; color: #a1a1aa; }
+.sync-pill:hover { border-color: #52525b; }
+
+/* Títulos de página */
+.stit { color: #f4f4f5; font-size: 17px; }
+
+/* Inputs e selects */
+input, textarea, select {
+  background: #111114;
+  border: 1px solid #3f3f46;
+  color: #f4f4f5;
+  border-radius: 6px;
+}
+input:focus, textarea:focus, select:focus { border-color: #f5a623; }
+
+/* Disc cards */
+.disc-card { background: #1c1c1f; border-color: #3f3f46; }
+.disc-card:hover { border-color: #52525b; }
+.disc-card-name { color: #f4f4f5; }
+.disc-badge { color: #d4d4d8; background: #27272a; border-color: #3f3f46; }
+
+/* Rev items */
+.rev-item { background: rgba(239,68,68,.06); }
+.rev-topic { color: #f4f4f5; }
+.rev-disc  { color: #a1a1aa; }
+
+/* Buttons */
+.btn-p { background: #f4f4f5; color: #09090b; }
+.btn-p:hover { background: #ffffff; }
+.btn-g { background: #1c1c1f; color: #d4d4d8; border-color: #3f3f46; }
+.btn-g:hover { border-color: #52525b; color: #f4f4f5; }
+
+/* Alert boxes */
+.alert-info { background: rgba(59,130,246,.08); border-left-color: #3b82f6; color: #cbd5e1; }
+
+/* Aulas section */
+.disc-aulas-section { border-top-color: #27272a; }
+.aula-row { border-bottom-color: #27272a; }
+.aula-row-title { color: #e4e4e7; }
+.aula-row-meta  { color: #a1a1aa; }
+
+/* Benchmarking */
+.bench-card { background: #1c1c1f; border-color: #3f3f46; }
+.bench-title { color: #a1a1aa; }
+.bench-val { color: #f4f4f5; }
+
+/* Plan tabs */
+.plan-tab { color: #a1a1aa; }
+.plan-tab:hover { color: #d4d4d8; }
+.plan-tab.active { color: #f5a623; border-bottom-color: #f5a623; }
+
+/* Imp tabs */
+.imp-tab { color: #a1a1aa; background: #1c1c1f; border-color: #3f3f46; }
+.imp-tab.active { color: #f4f4f5; background: #27272a; border-color: #52525b; }
+
+/* Template cards */
+.template-card { background: #1c1c1f; border-color: #3f3f46; }
+.template-card:hover { border-color: #52525b; }
+.template-nome { color: #f4f4f5; }
+.template-meta { color: #a1a1aa; }
+
+/* Acerto badge */
+.acerto-badge { background: transparent; }
+
+/* Progresso */
+.disc-prog-bar-track { background: #27272a; }
+
+/* Week task inline */
+.week-task { background: #1c1c1f; border-color: #3f3f46; }
+.week-task-title { color: #e4e4e7; }
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: #111114; }
+::-webkit-scrollbar-thumb { background: #3f3f46; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #52525b; }
