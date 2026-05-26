@@ -243,7 +243,7 @@ window.goTab = function(name) {
   document.querySelectorAll('.tab,.nav-item').forEach(e=>e.classList.remove('active'));
   document.getElementById('tab-'+name)?.classList.add('active');
   document.getElementById('nav-'+name)?.classList.add('active');
-  const titles={hoje:'Foco do Dia',semana:'Visão da Semana',historico:'Histórico',questoes:'Análise de Desempenho — TecConcursos',progresso:'Progresso & Previsão',planejamento:'Planejamento',templates:'Templates'};
+  const titles={hoje:'Metas da Semana',historico:'Histórico',questoes:'Análise de Desempenho — TecConcursos',progresso:'Progresso & Previsão',planejamento:'Planejamento',templates:'Templates'};
   document.getElementById('pageTitle').textContent=titles[name]||name;
   if (name==='hoje')         renderHoje();
   if (name==='historico')    renderHistorico();
@@ -357,78 +357,119 @@ window.toggleTaskDetail = function(id) {
 // TAB: HOJE
 // ============================================================
 function renderHoje() {
-  const today=new Date().getDay(), horasHoje=S.config.horasSemana[today]||0;
-  const totalMins=horasHoje*60, allP=pendingTarefas();
-  const allT=allTarefas(), done=allT.filter(t=>t.status==='concluida');
-  const pct=allT.length?Math.round(done.length/allT.length*100):0;
-  document.getElementById('statsGrid').innerHTML=`
-    <div class="sc"><span class="sv" style="color:var(--gr)">${pct}%</span><span class="sl">Concluído</span></div>
-    <div class="sc"><span class="sv">${done.length}</span><span class="sl">Feitas</span></div>
-    <div class="sc"><span class="sv" style="color:var(--acc)">${allP.length}</span><span class="sl">Pendentes</span></div>
-    <div class="sc"><span class="sv">${horasHoje}h</span><span class="sl">Horas Hoje</span></div>`;
-  const hojeBar=document.getElementById('hojeBar'), hojeList=document.getElementById('hojeList');
-  if (horasHoje===0){ hojeBar.innerHTML=''; hojeList.innerHTML=`<div style="text-align:center;padding:28px;color:var(--tx3)">🛌 Dia de descanso!</div>`; return; }
-  if (!allP.length){
-    hojeBar.innerHTML='';
-    const temDisc=(S.disciplinas||[]).some(d=>(d.aulas||[]).length>0);
-    hojeList.innerHTML=temDisc
-      ?`<div style="text-align:center;padding:28px;color:var(--gr);font-size:13px">✅ Todas as tarefas concluídas!</div>`
-      :`<div style="text-align:center;padding:28px;color:var(--tx3);font-size:13px">📚 Nenhuma disciplina com aulas ainda.<br><br><button class="btn btn-p" onclick="goTab('planejamento')">Ir para Planejamento</button></div>`;
-    return;
-  }
-  // ── Seção de Revisões Pendentes ──
+  // ── Stats globais ──
+  var allT  = allTarefas();
+  var done  = allT.filter(function(t){return t.status==='concluida';});
+  var allP  = pendingTarefas();
+  var pct   = allT.length ? Math.round(done.length/allT.length*100) : 0;
+  var todayDow  = new Date().getDay();
+  var horasHoje = (S.config.horasSemana||[])[todayDow]||0;
+
+  var sg = document.getElementById('statsGrid');
+  if (sg) sg.innerHTML =
+    '<div class="sc"><span class="sv" style="color:var(--gr)">' + pct + '%</span><span class="sl">Concluído</span></div>' +
+    '<div class="sc"><span class="sv">' + done.length + '</span><span class="sl">Feitas</span></div>' +
+    '<div class="sc"><span class="sv" style="color:var(--acc)">' + allP.length + '</span><span class="sl">Pendentes</span></div>' +
+    '<div class="sc"><span class="sv">' + horasHoje + 'h</span><span class="sl">Horas Hoje</span></div>';
+
+  // ── Revisões Pendentes ──
   try {
-    // Remove revisões anteriores para evitar duplicatas
-    document.querySelectorAll('.rev-pend-section').forEach(el => el.remove());
-    const revPend = getRevisoesPendentes();
-    if (revPend.length > 0) {
-      const hojeBarEl = document.getElementById('hojeBar');
-      if (hojeBarEl && hojeBarEl.parentNode) {
-        const revCard = document.createElement('div');
-        revCard.className = 'card rev-pend-section';
-        revCard.style.marginBottom = '14px';
-        var revHtml = '<div class="ct" style="color:#eab308">⏰ Revisões Pendentes (' + revPend.length + ')</div>';
-        revPend.forEach(function(t) {
-          var dias = Math.floor((Date.now() - new Date(t.proximaRevisaoEm)) / 864e5);
-          var atrasoStr = dias <= 0 ? 'hoje' : 'há ' + dias + ' dia(s)';
-          var borCor = (t.pctAcerto||0) < 60 ? '#ef4444' : (t.pctAcerto||0) < 75 ? '#eab308' : '#22c55e';
-          revHtml += '<div class="rev-item" style="border-left-color:' + borCor + '">';
-          revHtml += '<div>';
-          revHtml += '<div style="display:flex;align-items:center;gap:6px;margin-bottom:3px">';
-          revHtml += '<span class="aula-badge">' + (t.aulaCod||'A?') + '</span>';
-          revHtml += '<span style="font-size:12px;font-weight:500;color:#fafafa">' + (t.topico||'—') + '</span>';
-          revHtml += '</div>';
-          revHtml += '<div style="font-size:10px;color:#52525b">';
-          revHtml += '<span style="color:' + (t.discCor||'#f5a623') + '">● ' + (t.discNome||'?') + '</span>';
-          revHtml += ' · Acerto: <span style="color:' + ((t.pctAcerto||0)>=70?'#22c55e':'#ef4444') + '">' + (t.pctAcerto||0) + '%</span>';
-          revHtml += ' · Venceu ' + atrasoStr;
-          revHtml += '</div></div>';
-          revHtml += '<button class="btn btn-g" style="padding:4px 10px;font-size:11px;flex-shrink:0" ';
-          revHtml += 'onclick="marcarRevisao(' + JSON.stringify(t.discId) + ',' + JSON.stringify(t.aulaId) + ',' + JSON.stringify(t.id) + ')">✔ Revisado</button>';
-          revHtml += '</div>';
-        });
-        revCard.innerHTML = revHtml;
-        hojeBarEl.parentNode.insertBefore(revCard, hojeBarEl);
+    document.querySelectorAll('.rev-pend-section').forEach(function(el){el.remove();});
+    var revPend = getRevisoesPendentes();
+    var hojeBarEl = document.getElementById('hojeBar');
+    if (revPend.length > 0 && hojeBarEl && hojeBarEl.parentNode) {
+      var revCard = document.createElement('div');
+      revCard.className = 'card rev-pend-section'; revCard.style.marginBottom='14px';
+      var rh = '<div class="ct" style="color:#eab308">⏰ Revisões Pendentes (' + revPend.length + ')</div>';
+      revPend.forEach(function(t) {
+        var d = Math.floor((Date.now()-new Date(t.proximaRevisaoEm))/864e5);
+        var borCor=(t.pctAcerto||0)<60?'#ef4444':(t.pctAcerto||0)<75?'#eab308':'#22c55e';
+        rh+='<div class="rev-item" style="border-left-color:'+borCor+'"><div>';
+        rh+='<div style="display:flex;align-items:center;gap:6px;margin-bottom:3px"><span class="aula-badge">'+(t.aulaCod||'A?')+'</span>';
+        rh+='<span style="font-size:12px;font-weight:500;color:#fafafa">'+(t.topico||'—')+'</span></div>';
+        rh+='<div style="font-size:10px;color:#52525b"><span style="color:'+(t.discCor||'#f5a623')+'">● '+(t.discNome||'?')+'</span>';
+        rh+=' · Acerto: <span style="color:'+((t.pctAcerto||0)>=70?'#22c55e':'#ef4444')+'">'+(t.pctAcerto||0)+'%</span>';
+        rh+=' · '+(d<=0?'hoje':'há '+d+' dia(s)')+'</div></div>';
+        rh+='<button class="btn btn-g" style="padding:4px 10px;font-size:11px;flex-shrink:0" ';
+        rh+='onclick="marcarRevisao('+JSON.stringify(t.discId)+','+JSON.stringify(t.aulaId)+','+JSON.stringify(t.id)+')">✔ Revisado</button></div>';
+      });
+      revCard.innerHTML = rh;
+      hojeBarEl.parentNode.insertBefore(revCard, hojeBarEl);
+    }
+  } catch(eRev){ console.warn('[renderHoje] revisões:',eRev); }
+
+  // ── Plano semanal vertical ──
+  var hojeBar  = document.getElementById('hojeBar');
+  var hojeList = document.getElementById('hojeList');
+  if (!hojeBar || !hojeList) return;
+
+  var plan    = buildWeekPlan();
+  var HS_IDX  = [1,2,3,4,5,6,0];
+  var hojeIdx = HS_IDX.indexOf(todayDow);
+  if (hojeIdx < 0) hojeIdx = 0;
+
+  // Barra de progresso do dia
+  var hojeDay    = plan[hojeIdx] || { tasks:[], horas:0 };
+  var todayTasks = hojeDay.tasks || [];
+  var allocMins  = todayTasks.reduce(function(s,t){return s+(t.duracaoMin||0);},0);
+  var livresMins = Math.max(0, horasHoje*60 - allocMins);
+  var barPct     = horasHoje>0 ? Math.min(100,Math.round(allocMins/(horasHoje*60)*100)) : 0;
+  var doneHoje   = todayTasks.filter(function(t){return t.status==='concluida';}).length;
+
+  hojeBar.innerHTML = horasHoje > 0
+    ? '<div class="hoje-bar-wrap"><div class="hoje-bar-labels">'
+        + '<span style="font-size:11px;color:var(--tx3)">' + fmtMin(allocMins) + ' alocados · ' + doneHoje + '/' + todayTasks.length + ' concluídas</span>'
+        + '<span style="font-size:11px;color:var(--tx3)">' + fmtMin(livresMins) + ' livres</span>'
+      + '</div><div class="hoje-bar-track"><div class="hoje-bar-fill" style="width:' + barPct + '%"></div></div></div>'
+    : '';
+
+  // Monta semana a partir de hoje
+  var today = new Date();
+  var html  = '';
+  for (var i=0; i<plan.length; i++) {
+    var day    = plan[(hojeIdx + i) % plan.length];
+    var isHoje = (i === 0);
+    var dayDate = new Date(today); dayDate.setDate(today.getDate() + i);
+    var dateStr = dayDate.getDate() + '/' + (dayDate.getMonth()+1);
+    var secColor = isHoje ? 'var(--acc)' : 'var(--tx3)';
+
+    html += '<div style="margin-bottom:' + (isHoje?'24':'18') + 'px">';
+    // Cabeçalho do dia
+    html += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid var(--bd)">';
+    html += '<span style="font-size:11px;font-weight:700;color:' + secColor + ';text-transform:uppercase;letter-spacing:.06em">' + (isHoje ? '📌 HOJE' : '📅 ' + day.nome.toUpperCase()) + '</span>';
+    html += '<span style="font-size:12px;color:var(--tx3)">' + dateStr + '</span>';
+    html += '<span style="font-size:11px;color:var(--tx3);margin-left:auto">' + (day.horas > 0 ? day.horas + 'h' : 'folga') + '</span>';
+    html += '</div>';
+
+    if (day.horas === 0) {
+      html += '<div style="padding:12px 0;text-align:center;color:var(--tx3);font-size:13px">🛌 Dia de descanso</div>';
+    } else if (!day.tasks || day.tasks.length === 0) {
+      html += '<div style="padding:8px 0;color:var(--tx3);font-size:12px">Sem tarefas pendentes.</div>';
+    } else if (isHoje) {
+      // Cards completos com detalhes para hoje
+      for (var j=0; j<day.tasks.length; j++) { html += renderTaskCard(day.tasks[j], j); }
+    } else {
+      // Cards compactos para outros dias
+      for (var j=0; j<day.tasks.length; j++) {
+        var t = day.tasks[j];
+        var ti = TYPES[t.type] || TYPES.TEORIA;
+        var dis = null;
+        var ds = S.disciplinas||[]; for(var k=0;k<ds.length;k++){if(ds[k].id===t.discId){dis=ds[k];break;}}
+        var cor = (dis && dis.cor) ? dis.cor : 'var(--acc)';
+        html += '<div style="display:flex;align-items:center;gap:8px;padding:6px 10px;background:var(--s2);border:1px solid var(--bd);border-left:3px solid '+cor+';border-radius:6px;margin-bottom:5px">';
+        html += '<span class="aula-badge" style="font-size:9px">'+(t.aulaCod||'A?')+'</span>';
+        html += '<span style="font-size:9px;color:'+ti.cor+'">'+ti.label+'</span>';
+        html += '<span style="font-size:12px;color:var(--tx);flex:1;overflow:hidden;white-space:nowrap;text-overflow:ellipsis">'+(t.topico||'—')+'</span>';
+        html += '<span style="font-size:10px;color:var(--tx3);flex-shrink:0">⏱ '+(t.duracaoMin||0)+'min</span>';
+        html += '</div>';
       }
     }
-  } catch(eRev) { console.warn('[renderHoje] erro revisões:', eRev); }
+    html += '</div>';
+  }
 
-  const todayTasks=buildTodayTasks(totalMins);
-  const allocMins=todayTasks.reduce((s,t)=>s+(t.duracaoMin||0),0);
-  const livresMins=Math.max(0,totalMins-allocMins);
-  const barPct=totalMins>0?Math.min(100,Math.round(allocMins/totalMins*100)):0;
-  const doneHoje=todayTasks.filter(t=>t.status==='concluida').length;
-  hojeBar.innerHTML=`<div class="hoje-bar-wrap">
-    <div class="hoje-bar-labels">
-      <span style="font-size:11px;color:var(--tx3)">${fmtMin(allocMins)} alocados · ${doneHoje}/${todayTasks.length} concluídas</span>
-      <span style="font-size:11px;color:var(--tx3)">${fmtMin(livresMins)} livres</span>
-    </div>
-    <div class="hoje-bar-track"><div class="hoje-bar-fill" style="width:${barPct}%"></div></div>
-  </div>`;
-  hojeList.innerHTML=todayTasks.length
-    ?todayTasks.map((t,i)=>renderTaskCard(t,i)).join('')
-    :`<div style="color:var(--tx3);font-size:13px;padding:12px 0">Configure a agenda em Planejamento → Trilha.</div>`;
+  hojeList.innerHTML = html || '<div style="text-align:center;padding:28px;color:var(--tx3)">📚 Configure a agenda em Planejamento → Trilha.</div>';
 }
+
 window.toggleTarefa = function(discId,aulaId,tarefaId) {
   const d=(S.disciplinas||[]).find(x=>x.id===discId); if (!d) return;
   const aula=(d.aulas||[]).find(a=>a.id===aulaId); if (!aula) return;
@@ -1163,6 +1204,5 @@ function renderAll() {
   try { if(document.getElementById('tab-questoes')?.classList.contains('active'))  renderQuestoes(); }  catch(e){ console.error(e); }
   try { if(document.getElementById('tab-progresso')?.classList.contains('active')) renderProgresso(); } catch(e){ console.error(e); }
   try { if(document.getElementById('tab-historico')?.classList.contains('active')) renderHistorico(); } catch(e){ console.error(e); }
-  try { if(document.getElementById('tab-semana')?.classList.contains('active'))    renderSemana(); }    catch(e){ console.error('[renderAll] renderSemana:',e); }
 }
 renderAll();
