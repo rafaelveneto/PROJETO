@@ -270,6 +270,7 @@ window.switchImp = function(mode,btn) {
   if (mode==='form') initForm();
   populateDiscDropdowns();
 };
+window.irParaTrilha      = ()=>{ goTab('planejamento'); setTimeout(()=>switchPlan('trilha',document.getElementById('ptab-trilha')),60); };
 window.irParaDisciplinas = ()=>{ goTab('planejamento'); setTimeout(()=>switchPlan('disciplinas',document.getElementById('ptab-disciplinas')),60); };
 window.irParaImport = function(panel) {
   goTab('planejamento');
@@ -545,53 +546,60 @@ function renderSemana() {
   const contentEl = document.getElementById('semanaViewContent');
   if (!headerEl || !contentEl) return;
 
-  const plan = buildWeekPlan();
-  const totalTarefas  = plan.reduce((s,d)=>s+d.tasks.length,0);
-  const totalMinutos  = plan.reduce((s,d)=>s+d.tasks.reduce((x,t)=>x+(t.duracaoMin||0),0),0);
-  const totalHoras    = plan.reduce((s,d)=>s+d.horas,0);
+  let plan;
+  try { plan = buildWeekPlan(); }
+  catch(e) { contentEl.innerHTML=`<p style="color:var(--re);padding:20px">Erro: ${e.message}</p>`; return; }
 
-  headerEl.innerHTML = `
-    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
-      <div>
-        <div style="font-size:11px;color:var(--tx3)">
-          ${totalTarefas} tarefa(s) · ${fmtMin(totalMinutos)} alocados · ${totalHoras}h programadas
-        </div>
-      </div>
-      <button class="btn btn-g" style="font-size:11px" onclick="goTab('planejamento');setTimeout(()=>switchPlan('trilha',document.getElementById('ptab-trilha')),60)">
-        ⚙️ Editar horas
-      </button>
-    </div>`;
+  const totalTarefas = plan.reduce((s,d)=>s+d.tasks.length, 0);
+  const totalMins    = plan.reduce((s,d)=>s+d.tasks.reduce((x,t)=>x+(t.duracaoMin||0),0), 0);
+  const totalHoras   = plan.reduce((s,d)=>s+d.horas, 0);
 
-  contentEl.innerHTML = `
-    <div class="week-view">
-      ${plan.map(day => `
-        <div class="week-col${day.isHoje?' week-col-today':''}${day.isPast?' week-col-past':''}">
-          <div class="week-col-header">
-            <div class="week-day-name">${day.nome}</div>
-            <div class="week-day-num${day.isHoje?' week-day-today-num':''}">${day.dia}</div>
-            <div class="week-day-meta">${day.horas > 0 ? day.horas+'h' : 'folga'}</div>
-          </div>
-          <div class="week-col-body">
-            ${day.horas === 0
-              ? `<div class="week-rest">🛌</div>`
-              : day.tasks.length === 0
-                ? `<div class="week-rest" style="font-size:10px">sem tarefas</div>`
-                : day.tasks.map(t => {
-                    const ti  = TYPES[t.type] || TYPES.TEORIA;
-                    const disc = (S.disciplinas||[]).find(d=>d.id===t.discId);
-                    return `<div class="week-task" style="border-left-color:${disc?.cor||'var(--acc)'}">
-                      <div class="week-task-tags">
-                        <span class="aula-badge" style="font-size:9px;padding:1px 5px">${t.aulaCod||'A?'}</span>
-                        <span style="font-size:9px;color:${ti.cor}">${ti.label}</span>
-                      </div>
-                      <div class="week-task-title">${t.topico}</div>
-                      <div class="week-task-meta">⏱ ${t.duracaoMin}min</div>
-                    </div>`;
-                  }).join('')
-            }
-          </div>
-        </div>`).join('')}
-    </div>`;
+  headerEl.innerHTML =
+    '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:4px">' +
+      '<div style="font-size:12px;color:var(--tx3)">' + totalTarefas + ' tarefa(s) · ' + fmtMin(totalMins) + ' alocados · ' + totalHoras + 'h programadas</div>' +
+      '<button class="btn btn-g" style="font-size:11px" onclick="irParaTrilha()">⚙️ Editar horas</button>' +
+    '</div>';
+
+  // Constrói colunas com concatenação simples (sem ternários aninhados em template)
+  let html = '<div class="week-view">';
+  plan.forEach(function(day) {
+    const isHoje = day.isHoje ? ' week-col-today' : '';
+    const isPast = day.isPast ? ' week-col-past'  : '';
+    const numCls = day.isHoje ? ' week-day-today-num' : '';
+
+    html += '<div class="week-col' + isHoje + isPast + '">';
+    html += '<div class="week-col-header">';
+    html +=   '<div class="week-day-name">'  + day.nome + '</div>';
+    html +=   '<div class="week-day-num'     + numCls + '">' + day.dia + '</div>';
+    html +=   '<div class="week-day-meta">'  + (day.horas > 0 ? day.horas + 'h' : 'folga') + '</div>';
+    html += '</div>';
+    html += '<div class="week-col-body">';
+
+    if (day.horas === 0) {
+      html += '<div class="week-rest">🛌</div>';
+    } else if (day.tasks.length === 0) {
+      html += '<div class="week-rest" style="font-size:10px;color:var(--tx3)">sem tarefas</div>';
+    } else {
+      day.tasks.forEach(function(t) {
+        const ti   = TYPES[t.type] || TYPES.TEORIA;
+        const disc = (S.disciplinas||[]).find(function(d){ return d.id===t.discId; });
+        const cor  = (disc && disc.cor) ? disc.cor : 'var(--acc)';
+        html += '<div class="week-task" style="border-left-color:' + cor + '">';
+        html +=   '<div class="week-task-tags">';
+        html +=     '<span class="aula-badge" style="font-size:9px;padding:1px 5px">' + (t.aulaCod||'A?') + '</span>';
+        html +=     '<span style="font-size:9px;color:' + ti.cor + '">' + ti.label + '</span>';
+        html +=   '</div>';
+        html +=   '<div class="week-task-title">' + (t.topico||'—') + '</div>';
+        html +=   '<div class="week-task-meta">⏱ ' + (t.duracaoMin||0) + 'min</div>';
+        html += '</div>';
+      });
+    }
+
+    html += '</div></div>'; // fecha week-col-body e week-col
+  });
+  html += '</div>'; // fecha week-view
+
+  contentEl.innerHTML = html;
 }
 
 // ============================================================
