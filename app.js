@@ -243,7 +243,7 @@ window.goTab = function(name) {
   document.querySelectorAll('.tab,.nav-item').forEach(e=>e.classList.remove('active'));
   document.getElementById('tab-'+name)?.classList.add('active');
   document.getElementById('nav-'+name)?.classList.add('active');
-  const titles={hoje:'Foco do Dia',historico:'Histórico',questoes:'Análise de Desempenho',progresso:'Progresso & Previsão',planejamento:'Planejamento',templates:'Templates'};
+  const titles={hoje:'Foco do Dia',semana:'Visão da Semana',historico:'Histórico',questoes:'Análise de Desempenho — TecConcursos',progresso:'Progresso & Previsão',planejamento:'Planejamento',templates:'Templates'};
   document.getElementById('pageTitle').textContent=titles[name]||name;
   if (name==='hoje')         renderHoje();
   if (name==='historico')    renderHistorico();
@@ -483,6 +483,115 @@ function getRevisoesPendentes() {
     t.proximaRevisaoEm &&
     new Date(t.proximaRevisaoEm) <= now
   ).sort((a,b) => new Date(a.proximaRevisaoEm) - new Date(b.proximaRevisaoEm));
+}
+
+// ============================================================
+// TAB: SEMANA
+// ============================================================
+function buildWeekPlan() {
+  const today   = new Date();
+  const todayDow = today.getDay(); // 0=Dom…6=Sáb
+  // Segunda desta semana
+  const monday  = new Date(today);
+  monday.setDate(today.getDate() - (todayDow === 0 ? 6 : todayDow - 1));
+  monday.setHours(0,0,0,0);
+
+  // Ordem Seg→Dom. horasSemana indexado [0=Dom,1=Seg…6=Sáb]
+  const HS_IDX  = [1,2,3,4,5,6,0];   // índices em horasSemana
+  const NOMES   = ['Seg','Ter','Qua','Qui','Sex','Sáb','Dom'];
+  const hs      = S.config.horasSemana || [0,4,4,4,4,4,2];
+
+  // Filas sequenciais frescas (não altera estado global)
+  const queues = (S.disciplinas||[]).map(d=>{
+    const tasks = getSequentialQueue(d.id);
+    return tasks.length ? { tasks:[...tasks] } : null;
+  }).filter(Boolean);
+
+  return HS_IDX.map((hsIdx, i) => {
+    const date = new Date(monday);
+    date.setDate(monday.getDate() + i);
+    const horas = hs[hsIdx] || 0;
+    const tasks = [];
+
+    if (horas > 0 && queues.length) {
+      let budget = horas * 60, rounds = 0;
+      while (budget > 0 && rounds < 100) {
+        rounds++; let added = false;
+        for (const q of queues) {
+          if (!q.tasks.length || budget <= 0) continue;
+          const t = q.tasks[0];
+          if (t.duracaoMin <= budget + 15) {
+            q.tasks.shift(); tasks.push(t); budget -= t.duracaoMin; added = true;
+          }
+        }
+        if (!added) break;
+      }
+    }
+
+    return {
+      nome:    NOMES[i],
+      dia:     date.getDate(),
+      mes:     date.getMonth() + 1,
+      isHoje:  date.toDateString() === today.toDateString(),
+      isPast:  date < new Date(today.getFullYear(), today.getMonth(), today.getDate()),
+      horas,
+      tasks
+    };
+  });
+}
+
+function renderSemana() {
+  const headerEl  = document.getElementById('semanaViewHeader');
+  const contentEl = document.getElementById('semanaViewContent');
+  if (!headerEl || !contentEl) return;
+
+  const plan = buildWeekPlan();
+  const totalTarefas  = plan.reduce((s,d)=>s+d.tasks.length,0);
+  const totalMinutos  = plan.reduce((s,d)=>s+d.tasks.reduce((x,t)=>x+(t.duracaoMin||0),0),0);
+  const totalHoras    = plan.reduce((s,d)=>s+d.horas,0);
+
+  headerEl.innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+      <div>
+        <div style="font-size:11px;color:var(--tx3)">
+          ${totalTarefas} tarefa(s) · ${fmtMin(totalMinutos)} alocados · ${totalHoras}h programadas
+        </div>
+      </div>
+      <button class="btn btn-g" style="font-size:11px" onclick="goTab('planejamento');setTimeout(()=>switchPlan('trilha',document.getElementById('ptab-trilha')),60)">
+        ⚙️ Editar horas
+      </button>
+    </div>`;
+
+  contentEl.innerHTML = `
+    <div class="week-view">
+      ${plan.map(day => `
+        <div class="week-col${day.isHoje?' week-col-today':''}${day.isPast?' week-col-past':''}">
+          <div class="week-col-header">
+            <div class="week-day-name">${day.nome}</div>
+            <div class="week-day-num${day.isHoje?' week-day-today-num':''}">${day.dia}</div>
+            <div class="week-day-meta">${day.horas > 0 ? day.horas+'h' : 'folga'}</div>
+          </div>
+          <div class="week-col-body">
+            ${day.horas === 0
+              ? `<div class="week-rest">🛌</div>`
+              : day.tasks.length === 0
+                ? `<div class="week-rest" style="font-size:10px">sem tarefas</div>`
+                : day.tasks.map(t => {
+                    const ti  = TYPES[t.type] || TYPES.TEORIA;
+                    const disc = (S.disciplinas||[]).find(d=>d.id===t.discId);
+                    return `<div class="week-task" style="border-left-color:${disc?.cor||'var(--acc)'}">
+                      <div class="week-task-tags">
+                        <span class="aula-badge" style="font-size:9px;padding:1px 5px">${t.aulaCod||'A?'}</span>
+                        <span style="font-size:9px;color:${ti.cor}">${ti.label}</span>
+                      </div>
+                      <div class="week-task-title">${t.topico}</div>
+                      <div class="week-task-meta">⏱ ${t.duracaoMin}min</div>
+                    </div>`;
+                  }).join('')
+            }
+          </div>
+        </div>`).join('')}
+    </div>`;
 }
 
 // ============================================================
