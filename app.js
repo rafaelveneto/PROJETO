@@ -377,36 +377,41 @@ function renderHoje() {
     return;
   }
   // ── Seção de Revisões Pendentes ──
-  const revPend = getRevisoesPendentes();
-  if (revPend.length > 0) {
-    const revCard = document.createElement('div');
-    revCard.className = 'card'; revCard.style.marginBottom='14px';
-    const atrasoStr = t => {
-      const dias = Math.floor((Date.now() - new Date(t.proximaRevisaoEm)) / 864e5);
-      return dias <= 0 ? 'hoje' : `há ${dias} dia(s)`;
-    };
-    revCard.innerHTML = `
-      <div class="ct" style="color:var(--yl)">⏰ Revisões Pendentes (${revPend.length})</div>
-      ${revPend.map(t=>`
-        <div class="rev-item" style="border-left-color:${t.pctAcerto<60?'var(--re)':t.pctAcerto<75?'var(--yl)':'var(--gr)'}">
-          <div>
-            <div style="display:flex;align-items:center;gap:6px;margin-bottom:3px">
-              <span class="aula-badge">${t.aulaCod||'A?'}</span>
-              <span style="font-size:12px;font-weight:500;color:var(--tx)">${t.topico}</span>
-            </div>
-            <div style="font-size:10px;color:var(--tx3)">
-              <span style="color:${t.discCor}">● ${t.discNome}</span>
-              &nbsp;·&nbsp; Acerto: <span style="color:${t.pctAcerto>=70?'var(--gr)':'var(--re)'}">
-                ${t.pctAcerto}%</span>
-              &nbsp;·&nbsp; Venceu ${atrasoStr(t)}
-            </div>
-          </div>
-          <button class="btn btn-g" style="padding:4px 10px;font-size:11px;flex-shrink:0"
-            onclick="marcarRevisao('${t.discId}','${t.aulaId}','${t.id}')">✔ Revisado</button>
-        </div>`).join('')}`;
-    const card = document.getElementById('hojeBar');
-    card.parentNode.insertBefore(revCard, card);
-  }
+  try {
+    // Remove revisões anteriores para evitar duplicatas
+    document.querySelectorAll('.rev-pend-section').forEach(el => el.remove());
+    const revPend = getRevisoesPendentes();
+    if (revPend.length > 0) {
+      const hojeBarEl = document.getElementById('hojeBar');
+      if (hojeBarEl && hojeBarEl.parentNode) {
+        const revCard = document.createElement('div');
+        revCard.className = 'card rev-pend-section';
+        revCard.style.marginBottom = '14px';
+        var revHtml = '<div class="ct" style="color:#eab308">⏰ Revisões Pendentes (' + revPend.length + ')</div>';
+        revPend.forEach(function(t) {
+          var dias = Math.floor((Date.now() - new Date(t.proximaRevisaoEm)) / 864e5);
+          var atrasoStr = dias <= 0 ? 'hoje' : 'há ' + dias + ' dia(s)';
+          var borCor = (t.pctAcerto||0) < 60 ? '#ef4444' : (t.pctAcerto||0) < 75 ? '#eab308' : '#22c55e';
+          revHtml += '<div class="rev-item" style="border-left-color:' + borCor + '">';
+          revHtml += '<div>';
+          revHtml += '<div style="display:flex;align-items:center;gap:6px;margin-bottom:3px">';
+          revHtml += '<span class="aula-badge">' + (t.aulaCod||'A?') + '</span>';
+          revHtml += '<span style="font-size:12px;font-weight:500;color:#fafafa">' + (t.topico||'—') + '</span>';
+          revHtml += '</div>';
+          revHtml += '<div style="font-size:10px;color:#52525b">';
+          revHtml += '<span style="color:' + (t.discCor||'#f5a623') + '">● ' + (t.discNome||'?') + '</span>';
+          revHtml += ' · Acerto: <span style="color:' + ((t.pctAcerto||0)>=70?'#22c55e':'#ef4444') + '">' + (t.pctAcerto||0) + '%</span>';
+          revHtml += ' · Venceu ' + atrasoStr;
+          revHtml += '</div></div>';
+          revHtml += '<button class="btn btn-g" style="padding:4px 10px;font-size:11px;flex-shrink:0" ';
+          revHtml += 'onclick="marcarRevisao(' + JSON.stringify(t.discId) + ',' + JSON.stringify(t.aulaId) + ',' + JSON.stringify(t.id) + ')">✔ Revisado</button>';
+          revHtml += '</div>';
+        });
+        revCard.innerHTML = revHtml;
+        hojeBarEl.parentNode.insertBefore(revCard, hojeBarEl);
+      }
+    }
+  } catch(eRev) { console.warn('[renderHoje] erro revisões:', eRev); }
 
   const todayTasks=buildTodayTasks(totalMins);
   const allocMins=todayTasks.reduce((s,t)=>s+(t.duracaoMin||0),0);
@@ -1151,12 +1156,13 @@ window.deletarTemplate = async function(id) {
 // ============================================================
 function renderAll() {
   const h=new Date().getHours();
-  document.getElementById('saudBlock').textContent=`${h<12?'Bom dia':h<18?'Boa tarde':'Boa noite'}! Foco total rumo à aprovação.`;
-  renderHoje();
-  renderDiscList();
-  if (document.getElementById('tab-questoes')?.classList.contains('active'))  renderQuestoes();
-  if (document.getElementById('tab-progresso')?.classList.contains('active')) renderProgresso();
-  if (document.getElementById('tab-historico')?.classList.contains('active')) renderHistorico();
-  if (document.getElementById('tab-semana')?.classList.contains('active'))    renderSemana();
+  const sb=document.getElementById('saudBlock');
+  if(sb) sb.textContent=(h<12?'Bom dia':h<18?'Boa tarde':'Boa noite')+'! Foco total rumo à aprovação.';
+  try { renderHoje(); }     catch(e){ console.error('[renderAll] renderHoje:',e); }
+  try { renderDiscList(); } catch(e){ console.error('[renderAll] renderDiscList:',e); }
+  try { if(document.getElementById('tab-questoes')?.classList.contains('active'))  renderQuestoes(); }  catch(e){ console.error(e); }
+  try { if(document.getElementById('tab-progresso')?.classList.contains('active')) renderProgresso(); } catch(e){ console.error(e); }
+  try { if(document.getElementById('tab-historico')?.classList.contains('active')) renderHistorico(); } catch(e){ console.error(e); }
+  try { if(document.getElementById('tab-semana')?.classList.contains('active'))    renderSemana(); }    catch(e){ console.error('[renderAll] renderSemana:',e); }
 }
 renderAll();
