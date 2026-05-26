@@ -179,6 +179,11 @@ window.pullFirebase   = async function(force=false) {
 };
 async function pushFirebase() {
   if (!currentUser) return;
+  // Proteção: nunca sobrescrever Firebase com estado vazio
+  if (!S.disciplinas?.length && !S.questoes_history?.length) {
+    console.warn('[pushFirebase] Bloqueado: estado local vazio, não sobrescreve Firebase.');
+    return;
+  }
   setSyncState('syncing');
   try {
     await db.collection('usuarios_pro').doc(currentUser.uid).set(JSON.parse(JSON.stringify(S)));
@@ -198,7 +203,8 @@ auth.onAuthStateChanged(user=>{
     document.getElementById('loginScreen').classList.add('hidden');
     document.getElementById('appShell').style.display='flex';
     document.getElementById('sbUserName').textContent=user.displayName?.split(' ')[0]||'Aluno';
-    pullFirebase(); renderAll();
+    renderAll();
+    pullFirebase(true); // sempre força pull do Firebase no login
   } else {
     document.getElementById('loginScreen').classList.remove('hidden');
     document.getElementById('appShell').style.display='none';
