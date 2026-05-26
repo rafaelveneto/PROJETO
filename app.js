@@ -734,7 +734,6 @@ window.confirmarNLM = function() {
 };
 
 // Formulário manual
-let tfForms=[];
 window.initForm = ()=>{ tfForms=[{id:uid()}]; renderForms(); };
 window.addTF    = ()=>{ tfForms.push({id:uid()}); renderForms(); };
 window.removeTF = id=>{ tfForms=tfForms.filter(t=>t.id!==id); renderForms(); };
