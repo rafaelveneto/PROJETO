@@ -139,7 +139,20 @@ function saveState() {
   localStorage.setItem('aprovado-v6',JSON.stringify(S));
   pushFirebase();
 }
-window.loginFirebase  = async()=>{ await auth.signInWithPopup(new firebase.auth.GoogleAuthProvider()); };
+window.loginFirebase = async function() {
+  const provider = new firebase.auth.GoogleAuthProvider();
+  try {
+    await auth.signInWithPopup(provider);
+  } catch(e) {
+    // Popup bloqueado ou fechado → usa redirect como fallback
+    if (e.code === 'auth/popup-blocked' || e.code === 'auth/popup-closed-by-user' || e.code === 'auth/cancelled-popup-request') {
+      try { await auth.signInWithRedirect(provider); }
+      catch(e2) { showToast(`Erro de login: ${e2.message}`, 'error'); }
+    } else if (e.code !== 'auth/popup-closed-by-user') {
+      showToast(`Erro de login: ${e.code || e.message}`, 'error');
+    }
+  }
+};
 window.logoutFirebase = async()=>{ if (confirm('Sair da conta?')){ await auth.signOut(); location.reload(); } };
 window.pullFirebase   = async function(force=false) {
   if (!currentUser){ setSyncState('error'); return; }
@@ -167,6 +180,13 @@ async function pushFirebase() {
     setSyncState('synced');
   } catch(e){ setSyncState('error'); showToast(`Erro ao salvar: ${e.code||e.message}`,'error'); }
 }
+// Captura resultado após signInWithRedirect (GitHub Pages)
+auth.getRedirectResult().then(result => {
+  if (result && result.user) console.log('[Auth] Login via redirect OK');
+}).catch(e => {
+  if (e.code && e.code !== 'auth/no-auth-event') showToast(`Erro pós-redirect: ${e.code}`, 'error');
+});
+
 auth.onAuthStateChanged(user=>{
   if (user){
     currentUser=user;
