@@ -544,62 +544,71 @@ function buildWeekPlan() {
 function renderSemana() {
   const headerEl  = document.getElementById('semanaViewHeader');
   const contentEl = document.getElementById('semanaViewContent');
-  if (!headerEl || !contentEl) return;
+  if (!headerEl || !contentEl) {
+    console.error('[Semana] Elementos não encontrados no DOM');
+    return;
+  }
 
-  let plan;
-  try { plan = buildWeekPlan(); }
-  catch(e) { contentEl.innerHTML=`<p style="color:var(--re);padding:20px">Erro: ${e.message}</p>`; return; }
+  var plan;
+  try {
+    plan = buildWeekPlan();
+    console.log('[Semana] plan gerado:', plan.length, 'dias, tarefas:', plan.reduce(function(s,d){return s+d.tasks.length;},0));
+  } catch(e) {
+    console.error('[Semana] Erro no buildWeekPlan:', e);
+    contentEl.innerHTML = '<div style="padding:20px;color:#ef4444">Erro ao gerar semana: ' + e.message + '</div>';
+    return;
+  }
 
-  const totalTarefas = plan.reduce((s,d)=>s+d.tasks.length, 0);
-  const totalMins    = plan.reduce((s,d)=>s+d.tasks.reduce((x,t)=>x+(t.duracaoMin||0),0), 0);
-  const totalHoras   = plan.reduce((s,d)=>s+d.horas, 0);
+  var totalTarefas = plan.reduce(function(s,d){return s+d.tasks.length;},0);
+  var totalMins    = plan.reduce(function(s,d){return s+d.tasks.reduce(function(x,t){return x+(t.duracaoMin||0);},0);},0);
+  var totalHoras   = plan.reduce(function(s,d){return s+d.horas;},0);
 
-  headerEl.innerHTML =
-    '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:4px">' +
-      '<div style="font-size:12px;color:var(--tx3)">' + totalTarefas + ' tarefa(s) · ' + fmtMin(totalMins) + ' alocados · ' + totalHoras + 'h programadas</div>' +
-      '<button class="btn btn-g" style="font-size:11px" onclick="irParaTrilha()">⚙️ Editar horas</button>' +
-    '</div>';
+  headerEl.innerHTML = '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;padding:4px 0 12px 0">'
+    + '<span style="font-size:12px;color:#a1a1aa">' + totalTarefas + ' tarefa(s) · ' + fmtMin(totalMins) + ' · ' + totalHoras + 'h/semana</span>'
+    + '<button class="btn btn-g" style="font-size:11px" onclick="irParaTrilha()">⚙️ Editar horas</button>'
+    + '</div>';
 
-  // Constrói colunas com concatenação simples (sem ternários aninhados em template)
-  let html = '<div class="week-view">';
-  plan.forEach(function(day) {
-    const isHoje = day.isHoje ? ' week-col-today' : '';
-    const isPast = day.isPast ? ' week-col-past'  : '';
-    const numCls = day.isHoje ? ' week-day-today-num' : '';
-
-    html += '<div class="week-col' + isHoje + isPast + '">';
-    html += '<div class="week-col-header">';
-    html +=   '<div class="week-day-name">'  + day.nome + '</div>';
-    html +=   '<div class="week-day-num'     + numCls + '">' + day.dia + '</div>';
-    html +=   '<div class="week-day-meta">'  + (day.horas > 0 ? day.horas + 'h' : 'folga') + '</div>';
+  var html = '<div style="display:flex;gap:8px;overflow-x:auto;padding-bottom:12px">';
+  for (var i=0; i<plan.length; i++) {
+    var day = plan[i];
+    var borderCor = day.isHoje ? '#f5a623' : '#27272a';
+    var numCor    = day.isHoje ? '#f5a623' : '#fafafa';
+    html += '<div style="min-width:140px;flex:1;background:#111114;border:1px solid ' + borderCor + ';border-radius:8px;overflow:hidden">';
+    // Cabeçalho
+    html += '<div style="padding:10px;text-align:center;background:#18181b;border-bottom:1px solid #27272a">';
+    html += '<div style="font-size:10px;font-weight:700;color:#52525b;text-transform:uppercase;margin-bottom:2px">' + day.nome + '</div>';
+    html += '<div style="font-size:22px;font-weight:700;font-family:monospace;color:' + numCor + ';line-height:1;margin-bottom:2px">' + day.dia + '</div>';
+    html += '<div style="font-size:10px;color:#52525b">' + (day.horas > 0 ? day.horas+'h' : 'folga') + '</div>';
     html += '</div>';
-    html += '<div class="week-col-body">';
-
+    // Corpo
+    html += '<div style="padding:8px;display:flex;flex-direction:column;gap:5px;min-height:80px">';
     if (day.horas === 0) {
-      html += '<div class="week-rest">🛌</div>';
+      html += '<div style="text-align:center;padding:16px 0;font-size:18px">🛌</div>';
     } else if (day.tasks.length === 0) {
-      html += '<div class="week-rest" style="font-size:10px;color:var(--tx3)">sem tarefas</div>';
+      html += '<div style="text-align:center;padding:12px 0;font-size:11px;color:#52525b">sem tarefas</div>';
     } else {
-      day.tasks.forEach(function(t) {
-        const ti   = TYPES[t.type] || TYPES.TEORIA;
-        const disc = (S.disciplinas||[]).find(function(d){ return d.id===t.discId; });
-        const cor  = (disc && disc.cor) ? disc.cor : 'var(--acc)';
-        html += '<div class="week-task" style="border-left-color:' + cor + '">';
-        html +=   '<div class="week-task-tags">';
-        html +=     '<span class="aula-badge" style="font-size:9px;padding:1px 5px">' + (t.aulaCod||'A?') + '</span>';
-        html +=     '<span style="font-size:9px;color:' + ti.cor + '">' + ti.label + '</span>';
-        html +=   '</div>';
-        html +=   '<div class="week-task-title">' + (t.topico||'—') + '</div>';
-        html +=   '<div class="week-task-meta">⏱ ' + (t.duracaoMin||0) + 'min</div>';
+      for (var j=0; j<day.tasks.length; j++) {
+        var t    = day.tasks[j];
+        var ti   = TYPES[t.type] || TYPES.TEORIA;
+        var disc = null;
+        var discs = S.disciplinas || [];
+        for (var k=0; k<discs.length; k++) { if (discs[k].id===t.discId){disc=discs[k];break;} }
+        var cor  = (disc && disc.cor) ? disc.cor : '#f5a623';
+        html += '<div style="background:#18181b;border:1px solid #27272a;border-left:3px solid ' + cor + ';border-radius:6px;padding:7px 8px">';
+        html += '<div style="display:flex;align-items:center;gap:4px;margin-bottom:3px">';
+        html += '<span style="background:rgba(245,166,35,.18);color:#f5a623;font-size:9px;font-weight:700;padding:1px 5px;border-radius:4px">' + (t.aulaCod||'A?') + '</span>';
+        html += '<span style="font-size:9px;color:' + ti.cor + '">' + ti.label + '</span>';
         html += '</div>';
-      });
+        html += '<div style="font-size:11px;font-weight:500;color:#fafafa;line-height:1.35;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;margin-bottom:2px">' + (t.topico||'—') + '</div>';
+        html += '<div style="font-size:10px;color:#52525b">⏱ ' + (t.duracaoMin||0) + 'min</div>';
+        html += '</div>';
+      }
     }
-
-    html += '</div></div>'; // fecha week-col-body e week-col
-  });
-  html += '</div>'; // fecha week-view
-
+    html += '</div></div>';
+  }
+  html += '</div>';
   contentEl.innerHTML = html;
+  console.log('[Semana] renderizado com sucesso');
 }
 
 // ============================================================
@@ -1148,5 +1157,6 @@ function renderAll() {
   if (document.getElementById('tab-questoes')?.classList.contains('active'))  renderQuestoes();
   if (document.getElementById('tab-progresso')?.classList.contains('active')) renderProgresso();
   if (document.getElementById('tab-historico')?.classList.contains('active')) renderHistorico();
+  if (document.getElementById('tab-semana')?.classList.contains('active'))    renderSemana();
 }
 renderAll();
