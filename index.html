@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>APROVADO · Tracker de Alta Performance</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Syne:wght@700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore-compat.js"></script>
+</head>
+<body>
+
+<div id="toastContainer"></div>
+
+<!-- ── LOGIN ── -->
+<div class="login-screen" id="loginScreen">
+  <div class="login-box">
+    <div class="login-wordmark">
+      <div class="login-wordmark-icon"><svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M2 7h10M7 2l5 5-5 5" stroke="#09090b" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+      <div class="login-wordmark-text">Tracker<span> · Alta Performance</span></div>
+    </div>
+    <div class="login-heading">Boas-vindas de volta</div>
+    <div class="login-sub">Ambiente otimizado para concursos de elite.</div>
+    <button class="login-btn" onclick="loginFirebase()">
+      <svg width="16" height="16" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.31-8.16 2.31-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>
+      Continuar com Google
+    </button>
+  </div>
+</div>
+
+<!-- ── APP SHELL ── -->
+<div class="app-shell" id="appShell" style="display:none">
+  <aside class="sidebar" id="sidebar">
+    <div class="sb-top">
+      <div class="sb-brand">
+        <div class="sb-brand-icon"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" style="display:block"><path d="M2 7h10M7 2l5 5-5 5" stroke="#09090b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        <div class="sb-brand-text">Tracker<span> · PRO</span></div>
+      </div>
+    </div>
+    <nav class="sb-nav">
+      <div class="nav-section">Ciclo de Estudos</div>
+      <button class="nav-item active" id="nav-hoje" onclick="goTab('hoje')">Hoje</button>
+      <button class="nav-item" id="nav-historico" onclick="goTab('historico')">Histórico</button>
+
+      <div class="nav-section">Análise</div>
+      <button class="nav-item" id="nav-questoes" onclick="goTab('questoes')">Análise de Desempenho</button>
+      <button class="nav-item" id="nav-progresso" onclick="goTab('progresso')">Progresso & Previsão</button>
+
+      <div class="nav-section">Planejamento</div>
+      <button class="nav-item" id="nav-planejamento" onclick="goTab('planejamento')">Planejamento</button>
+      <button class="nav-item" id="nav-templates" onclick="goTab('templates')">Templates</button>
+    </nav>
+    <div class="sb-footer">
+      <div class="sb-user-chip" onclick="logoutFirebase()">
+        <div class="sb-user-avatar" id="sbUserAvatar">?</div>
+        <div class="sb-user-info">
+          <div class="sb-user-name" id="sbUserName">—</div>
+          <div class="sb-user-role">Sair da conta</div>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"></div>
+
+  <div style="display:flex;flex-direction:column;flex:1;min-width:0;">
+    <header class="app-topbar">
+      <button class="topbar-hamburger" onclick="toggleSidebar()">☰</button>
+      <span class="page-title" id="pageTitle">Hoje</span>
+      <div class="sync-pill" onclick="pullFirebase(true)">
+        <span class="sync-dot s-unconfigured" id="syncDot"></span>
+        <span id="syncText">Conectando…</span>
+      </div>
+    </header>
+
+    <main id="appMain" style="max-width:900px;margin:0 auto;padding:24px 20px;width:100%;">
+
+      <!-- ── TAB: HOJE ── -->
+      <div id="tab-hoje" class="tab active">
+        <div id="saudBlock" style="margin-bottom:20px;font-size:18px;font-weight:600;color:var(--tx)"></div>
+        <div class="sg" id="statsGrid"></div>
+        <div class="card">
+          <div class="ct">⚡ Foco de Hoje</div>
+          <div id="hojeBar"></div>
+          <div id="hojeList"></div>
+        </div>
+      </div>
+
+      <!-- ── TAB: HISTÓRICO ── -->
+      <div id="tab-historico" class="tab">
+        <div class="sh">
+          <div class="stit">Histórico de Atividades</div>
+        </div>
+        <div id="historicoContent"></div>
+      </div>
+
+      <!-- ── TAB: ANÁLISE DE DESEMPENHO ── -->
+      <div id="tab-questoes" class="tab">
+        <div class="sh" style="margin-bottom:10px">
+          <div class="stit">Análise de Desempenho</div>
+        </div>
+        <div class="q-filter-bar">
+          <span class="meta-label">Período:</span>
+          <select id="qPeriodSelect" style="width:auto;font-size:13px;font-weight:600" onchange="qPeriod=this.value;renderQuestoes()">
+            <option value="30">Últimos 30 dias</option>
+            <option value="90">Últimos 3 meses</option>
+            <option value="all" selected>Todo o Histórico</option>
+          </select>
+          <span class="meta-label" style="margin-left:8px">Disciplina:</span>
+          <select id="qDiscFilter" style="width:auto;font-size:13px;font-weight:600" onchange="qDiscSel=this.value;renderQuestoes()">
+            <option value="all">Todas</option>
+          </select>
+        </div>
+        <div id="questoesContent"></div>
+      </div>
+
+      <!-- ── TAB: PROGRESSO & PREVISÃO ── -->
+      <div id="tab-progresso" class="tab">
+        <div id="progressoContent"></div>
+      </div>
+
+      <!-- ── TAB: PLANEJAMENTO (TRILHA + IMPORTAR + DISCIPLINAS) ── -->
+      <div id="tab-planejamento" class="tab">
+        <div class="plan-tabs">
+          <button class="plan-tab active" id="ptab-trilha" onclick="switchPlan('trilha',this)">🗓 Trilha Adaptativa</button>
+          <button class="plan-tab" id="ptab-importar" onclick="switchPlan('importar',this)">📥 Importar Dados</button>
+          <button class="plan-tab" id="ptab-disciplinas" onclick="switchPlan('disciplinas',this)">📚 Disciplinas</button>
+        </div>
+
+        <!-- Sub-painel: Trilha -->
+        <div id="plan-trilha" class="plan-panel active">
+          <div class="sh">
+            <div class="stit">Trilha Estratégica Adaptativa</div>
+            <button class="btn btn-g" onclick="imprimirAgenda()" style="color:var(--tx)">🖨️ Imprimir Agenda</button>
+          </div>
+          <div class="card">
+            <div class="ct">Agenda da Semana (Horas por Dia)</div>
+            <div id="semanaGridContainer"></div>
+            <div style="margin-top:20px;text-align:right;border-top:1px solid var(--bd);padding-top:14px">
+              <button class="btn btn-p" onclick="renderMeta()">⚡ Gerar Meta da Semana</button>
+            </div>
+          </div>
+          <div class="alert-box alert-info">
+            O algoritmo ajusta o tempo baseando-se na sua proficiência: matérias com alto acerto perdem carga (manutenção); matérias fracas e sem conhecimento ganham carga extra.
+          </div>
+          <div id="metaContent"></div>
+        </div>
+
+        <!-- Sub-painel: Importar -->
+        <div id="plan-importar" class="plan-panel">
+          <div class="stit" style="margin-bottom:14px">Importar Conteúdo e Dados</div>
+          <div class="imp-tabs">
+            <button class="imp-tab active" onclick="switchImp('nlm',this)">📋 Colar NotebookLM</button>
+            <button class="imp-tab" onclick="switchImp('form',this)">✏️ Formulário Manual</button>
+            <button class="imp-tab" onclick="switchImp('xlsx',this)">📊 Estatísticas TecConcursos</button>
+          </div>
+
+          <div id="imp-nlm" class="imp-panel active">
+            <div class="card">
+              <div class="ct">Identificação</div>
+              <div class="fg2">
+                <div class="fg"><label>Disciplina</label><select id="nlm-disc"></select></div>
+                <div class="fg"><label>Código da Aula</label><input id="nlm-cod" placeholder="Ex: Aula 03"></div>
+                <div class="fg full"><label>Título</label><input id="nlm-tit" placeholder="Ex: Plenário – Sessões"></div>
+              </div>
+            </div>
+            <div class="card">
+              <div class="ct">Output do NotebookLM</div>
+              <textarea id="nlm-txt" style="min-height:160px;font-family:monospace;font-size:11px;width:100%;resize:vertical" placeholder="Cole aqui o texto completo gerado pelo Prompt Mestre do NotebookLM..."></textarea>
+              <div style="margin-top:10px;display:flex;gap:8px">
+                <button class="btn btn-p" onclick="parsearNLM()">🔍 Parsear</button>
+                <button class="btn btn-g" onclick="limparNLM()">Limpar</button>
+              </div>
+              <div id="nlm-preview"></div>
+            </div>
+          </div>
+
+          <div id="imp-form" class="imp-panel">
+            <div class="card">
+              <div class="ct">Identificação</div>
+              <div class="fg2">
+                <div class="fg"><label>Disciplina</label><select id="f-disc"></select></div>
+                <div class="fg"><label>Código</label><input id="f-cod" placeholder="Ex: Aula 03"></div>
+                <div class="fg full"><label>Título</label><input id="f-tit" placeholder="Ex: Plenário – Sessões"></div>
+              </div>
+            </div>
+            <div class="card">
+              <div class="ct">Tarefas</div>
+              <div id="tfList"></div>
+              <button class="btn btn-g" style="margin-top:4px" onclick="addTF()">+ Adicionar Tarefa</button>
+            </div>
+            <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:4px">
+              <button class="btn btn-g" onclick="irParaDisciplinas()">Cancelar</button>
+              <button class="btn btn-p" onclick="salvarManual()">✔ Salvar</button>
+            </div>
+          </div>
+
+          <div id="imp-xlsx" class="imp-panel">
+            <div class="card">
+              <div class="alert-box alert-info" style="margin-bottom:16px">
+                Vá no TecConcursos → Estatísticas → Atividades → Exportar (Excel). Faça o upload do arquivo <strong>.xlsx</strong> aqui.
+              </div>
+              <div class="fg2">
+                <div class="fg full">
+                  <label>Nome do Import</label>
+                  <input type="text" id="xls-label" placeholder="Ex: Câmara — Maio/2026" style="width:100%">
+                </div>
+                <div class="fg full">
+                  <label>Arquivo (.xlsx)</label>
+                  <div class="file-upload-area" onclick="document.getElementById('xls-file').click()">
+                    <span id="file-upload-text">📂 Clique para selecionar o arquivo</span>
+                    <input type="file" id="xls-file" accept=".xlsx,.xls" onchange="lerXlsx(this)" style="display:none">
+                  </div>
+                </div>
+              </div>
+              <div id="xls-preview" style="margin-top:14px"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Sub-painel: Disciplinas -->
+        <div id="plan-disciplinas" class="plan-panel">
+          <div class="sh">
+            <div class="stit">Gestão de Disciplinas</div>
+            <button class="btn btn-p" onclick="openAddDisc()">+ Nova Disciplina</button>
+          </div>
+          <div id="addDiscForm" class="card add-disc-form" style="display:none">
+            <div class="ct">Nova Disciplina</div>
+            <div class="disc-add-grid">
+              <div class="fg" style="grid-column:1/-1"><label>Nome da Disciplina</label><input id="nd-nome" placeholder="Ex: Direito Constitucional" style="width:100%"></div>
+              <div class="fg"><label>Peso</label><input id="nd-peso" type="number" value="20" min="1" max="100"></div>
+              <div class="fg"><label>Meta de Acerto (%)</label><input id="nd-meta" type="number" value="80" min="50" max="100"></div>
+              <div class="fg"><label>Cor</label><input id="nd-cor" type="color" value="#3b82f6" class="input-color"></div>
+              <div class="fg" style="grid-column:1/-1">
+                <label>Nível de Conhecimento Atual</label>
+                <select id="nd-nivel">
+                  <option value="nunca">🔴 Nunca estudei</option>
+                  <option value="comecei">🟡 Comecei mas não terminei</option>
+                  <option value="terminei">🟠 Terminei sem confiança</option>
+                  <option value="aparar">🟢 Falta aparar arestas</option>
+                </select>
+              </div>
+            </div>
+            <div style="display:flex;gap:8px;margin-top:14px;justify-content:flex-end">
+              <button class="btn btn-g" onclick="closeAddDisc()">Cancelar</button>
+              <button class="btn btn-p" onclick="salvarNovaDisc()">✔ Adicionar Disciplina</button>
+            </div>
+          </div>
+          <div id="discList"></div>
+        </div>
+      </div>
+
+      <!-- ── TAB: TEMPLATES ── -->
+      <div id="tab-templates" class="tab">
+        <div class="sh">
+          <div class="stit">Templates de Estudo</div>
+          <button class="btn btn-p" onclick="publicarTemplate()">↑ Publicar meu plano</button>
+        </div>
+        <div class="alert-box alert-info" style="margin-bottom:16px">
+          Templates são cópias do plano de disciplinas/aulas/tarefas de outros usuários. Ao importar, uma cópia independente é criada no seu perfil — você edita livremente sem afetar o original.
+        </div>
+        <div id="templatesContent"></div>
+      </div>
+
+    </main>
+  </div>
+</div>
+
+<div id="printArea" style="display:none"></div>
+
+
+
+<script src="app.js"></script>
+</body>
+</html>
