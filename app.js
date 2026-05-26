@@ -675,7 +675,15 @@ window.cancelarXlsx = function() { _xlsxParsed=null; document.getElementById('xl
 function renderDiscList() {
   const container=document.getElementById('discList'); if (!container) return;
   const discs=S.disciplinas||[];
-  if (!discs.length){ container.innerHTML=`<div class="empty-state"><div class="empty-state-icon">📚</div><div class="empty-state-title">Nenhuma disciplina cadastrada</div><div class="empty-state-sub">Clique em <strong>+ Nova Disciplina</strong> para começar.</div>${currentUser?`<button class="btn btn-g" style="margin-top:12px" onclick="pullFirebase(true).then(()=>renderDiscList())">↓ Tentar restaurar do Firebase</button>`:''}</div>`;
+  if (!discs.length){
+    container.innerHTML=`<div class="empty-state">
+      <div class="empty-state-icon">📚</div>
+      <div class="empty-state-title">Nenhuma disciplina cadastrada</div>
+      <div class="empty-state-sub">Clique em <strong>+ Nova Disciplina</strong> para adicionar manualmente.</div>
+      ${currentUser?`<div style="margin-top:14px;display:flex;gap:8px;justify-content:center;flex-wrap:wrap">
+        <button class="btn btn-p" onclick="pullFirebase(true)">↓ Restaurar dados do Firebase</button>
+      </div>`:''}
+    </div>`;
     return;
   }
   container.innerHTML=discs.map(d=>{
@@ -781,13 +789,35 @@ window.renderTemplates = async function() {
     }).join('');
   } catch(e){ container.innerHTML=`<div class="alert-box alert-info">Erro: ${e.code||e.message}</div>`; }
 };
-window.publicarTemplate = async function() {
+window.abrirFormPublicar = function() {
+  const discs = S.disciplinas||[];
   if (!currentUser){ showToast('Faça login primeiro.','error'); return; }
-  if (!(S.disciplinas||[]).length){ showToast('Adicione disciplinas antes de publicar.','error'); return; }
-  const nome=prompt('Nome do template:\n(Ex: Câmara dos Deputados — Analista Legislativo)'); if (!nome) return;
-  const discs=JSON.parse(JSON.stringify(S.disciplinas)).map(d=>({...d,aulas:(d.aulas||[]).map(a=>({...a,tarefas:(a.tarefas||[]).map(t=>({...t,status:'pendente',acertoQuestoes:undefined}))}))}));
-  try { await db.collection('templates').doc(uid()).set({id:uid(),nome,autor:currentUser.displayName||'Anônimo',autorUid:currentUser.uid,disciplinas:discs,criadoEm:new Date().toISOString()}); showToast('Template publicado!'); goTab('templates'); }
-  catch(e){ showToast(`Erro: ${e.code}`,'error'); }
+  if (!discs.length){
+    showToast('Nenhuma disciplina carregada. Clique no ● Sincronizado para restaurar.','info');
+    return;
+  }
+  document.getElementById('publishForm').style.display='block';
+  document.getElementById('template-nome').value='';
+  document.getElementById('template-disc-info').textContent=
+    `${discs.length} disciplina(s) serão incluídas com status zerado.`;
+  document.getElementById('template-nome').focus();
+};
+window.fecharFormPublicar = function() {
+  document.getElementById('publishForm').style.display='none';
+};
+window.confirmarPublicarTemplate = async function() {
+  const nome = document.getElementById('template-nome').value.trim();
+  if (!nome){ showToast('Dê um nome ao template.','error'); return; }
+  const discs=JSON.parse(JSON.stringify(S.disciplinas||[])).map(d=>({...d,aulas:(d.aulas||[]).map(a=>({...a,tarefas:(a.tarefas||[]).map(t=>({...t,status:'pendente'}))}))}));
+  try {
+    await db.collection('templates').doc(uid()).set({
+      id:uid(), nome, autor:currentUser.displayName||'Anônimo',
+      autorUid:currentUser.uid, disciplinas:discs, criadoEm:new Date().toISOString()
+    });
+    showToast('Template publicado com sucesso!');
+    fecharFormPublicar();
+    renderTemplates();
+  } catch(e){ showToast(`Erro: ${e.code||e.message}`,'error'); }
 };
 window.importarTemplate = async function(id) {
   if (!confirm('Importar template? As disciplinas serão ADICIONADAS ao seu plano.')) return;
