@@ -434,9 +434,11 @@ function renderHoje() {
     var secColor = isHoje ? 'var(--acc)' : 'var(--tx3)';
 
     html += '<div style="margin-bottom:' + (isHoje?'24':'18') + 'px">';
-    // Cabeçalho do dia
-    html += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid var(--bd)">';
-    html += '<span style="font-size:11px;font-weight:700;color:' + secColor + ';text-transform:uppercase;letter-spacing:.06em">' + (isHoje ? '📌 HOJE' : '📅 ' + day.nome.toUpperCase()) + '</span>';
+    // Cabeçalho do dia — fundo colorido para ser visível
+    var bgHdr = isHoje ? 'rgba(245,166,35,.1)' : 'transparent';
+    var bdHdr = isHoje ? 'var(--acc)' : 'var(--bd)';
+    html += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;padding:7px 10px;background:' + bgHdr + ';border-left:3px solid ' + bdHdr + ';border-radius:0 6px 6px 0">';
+    html += '<span style="font-size:12px;font-weight:700;color:' + secColor + ';text-transform:uppercase;letter-spacing:.06em">' + (isHoje ? '📌 Hoje' : '📅 ' + day.nome) + '</span>';
     html += '<span style="font-size:12px;color:var(--tx3)">' + dateStr + '</span>';
     html += '<span style="font-size:11px;color:var(--tx3);margin-left:auto">' + (day.horas > 0 ? day.horas + 'h' : 'folga') + '</span>';
     html += '</div>';
@@ -548,9 +550,9 @@ function buildWeekPlan() {
   const NOMES   = ['Seg','Ter','Qua','Qui','Sex','Sáb','Dom'];
   const hs      = S.config.horasSemana || [0,4,4,4,4,4,2];
 
-  // Filas sequenciais frescas (não altera estado global)
+  // Filas com TODAS as tarefas pendentes em ordem (não só a 1ª aula)
   const queues = (S.disciplinas||[]).map(d=>{
-    const tasks = getSequentialQueue(d.id);
+    const tasks = getPendingForDisc(d.id); // todas as aulas, em ordem
     return tasks.length ? { tasks:[...tasks] } : null;
   }).filter(Boolean);
 
