@@ -315,7 +315,7 @@ function renderTaskCard(t,idx) {
           ${t.paginas&&t.paginas!=='—'?`<span>📄 Pág.&nbsp;${t.paginas}</span>`:''}
           <span>🕐 ${fDur(dMin)}–${fDur(dMax)}</span>
           <span style="color:${disc?.cor||'var(--acc)'}">● ${t.discNome}</span>
-          ${t.acertoQuestoes!=null?`<span style="color:${t.acertoQuestoes>=70?'var(--gr)':'var(--re)'}">⚡ ${t.acertoQuestoes}% acerto</span>`:''}
+          ${t.pctAcerto!=null?`<span class="acerto-badge" style="color:${t.pctAcerto>=70?'var(--gr)':'var(--re)'}">⚡ ${t.qAcertos||0}/${t.qRespondidas||0} · ${t.pctAcerto}%</span>`:''}
         </div>
       </div>
       ${hasD?`<button class="detail-btn" onclick="toggleTaskDetail('${t.id}')">▸ detalhes</button>`:''}
@@ -785,9 +785,50 @@ window.renderTemplates = async function() {
     const snap=await db.collection('templates').orderBy('criadoEm','desc').limit(30).get();
     if (snap.empty){ container.innerHTML=`<div class="empty-state"><div class="empty-state-icon">📋</div><div class="empty-state-title">Nenhum template disponível ainda</div><div class="empty-state-sub">Clique em "Publicar meu plano" para compartilhar.</div></div>`; return; }
     container.innerHTML=snap.docs.map(doc=>{ const t=doc.data(), isOwn=t.autorUid===currentUser?.uid;
-      return `<div class="template-card"><div class="template-header"><div><div class="template-nome">${t.nome} ${isOwn?'<span class="own-badge">SEU</span>':''}</div><div class="template-meta">por ${t.autor} · ${(t.disciplinas||[]).length} disciplinas · ${new Date(t.criadoEm).toLocaleDateString('pt-BR')}</div></div><div style="display:flex;gap:6px">${isOwn?`<button class="btn btn-g" style="font-size:11px;padding:6px 10px" onclick="deletarTemplate('${t.id}')">🗑️</button>`:''}<button class="btn btn-p" style="font-size:12px" onclick="importarTemplate('${t.id}')">↓ Importar</button></div></div><div class="template-discs">${(t.disciplinas||[]).map(d=>`<span class="disc-badge-sm" style="color:${d.cor};border-color:${d.cor}30;background:${d.cor}15">${d.nome}</span>`).join('')}</div></div>`;
+      return `<div class="template-card" id="tpl-${t.id}">
+        <div class="template-header">
+          <div style="flex:1;min-width:0">
+            <div id="tpl-view-${t.id}" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+              <span class="template-nome">${t.nome}</span>
+              ${isOwn?'<span class="own-badge">SEU</span>':''}
+              ${isOwn?`<button class="btn-icon" title="Renomear" onclick="editarNomeTemplate('${t.id}','${t.nome.replace(/'/g,"\'")}')">✏️</button>`:''}
+            </div>
+            <div id="tpl-edit-${t.id}" style="display:none;margin-top:6px">
+              <div style="display:flex;gap:6px;align-items:center">
+                <input id="tpl-input-${t.id}" value="${t.nome}" style="flex:1;font-size:13px">
+                <button class="btn btn-p" style="padding:5px 10px;font-size:11px" onclick="salvarNomeTemplate('${t.id}')">✔</button>
+                <button class="btn btn-g" style="padding:5px 10px;font-size:11px" onclick="cancelarEditTemplate('${t.id}')">✕</button>
+              </div>
+            </div>
+            <div class="template-meta">por ${t.autor} · ${(t.disciplinas||[]).length} disciplinas · ${new Date(t.criadoEm).toLocaleDateString('pt-BR')}</div>
+          </div>
+          <div style="display:flex;gap:6px;flex-shrink:0">
+            ${isOwn?`<button class="btn btn-g" style="font-size:11px;padding:6px 10px" onclick="deletarTemplate('${t.id}')">🗑️</button>`:''}
+            <button class="btn btn-p" style="font-size:12px" onclick="importarTemplate('${t.id}')">↓ Importar</button>
+          </div>
+        </div>
+        <div class="template-discs">${(t.disciplinas||[]).map(d=>`<span class="disc-badge-sm" style="color:${d.cor};border-color:${d.cor}30;background:${d.cor}15">${d.nome}</span>`).join('')}</div>
+      </div>`;
     }).join('');
   } catch(e){ container.innerHTML=`<div class="alert-box alert-info">Erro: ${e.code||e.message}</div>`; }
+};
+window.editarNomeTemplate = function(id, nomeAtual) {
+  document.getElementById(`tpl-view-${id}`).style.display='none';
+  document.getElementById(`tpl-edit-${id}`).style.display='block';
+  const inp = document.getElementById(`tpl-input-${id}`);
+  if (inp){ inp.value=nomeAtual; inp.focus(); inp.select(); }
+};
+window.cancelarEditTemplate = function(id) {
+  document.getElementById(`tpl-view-${id}`).style.display='flex';
+  document.getElementById(`tpl-edit-${id}`).style.display='none';
+};
+window.salvarNomeTemplate = async function(id) {
+  const novoNome = document.getElementById(`tpl-input-${id}`)?.value.trim();
+  if (!novoNome){ showToast('Nome não pode ser vazio.','error'); return; }
+  try {
+    await db.collection('templates').doc(id).update({ nome: novoNome });
+    showToast('Nome atualizado!'); renderTemplates();
+  } catch(e){ showToast(`Erro: ${e.code}`,'error'); }
 };
 window.abrirFormPublicar = function() {
   const discs = S.disciplinas||[];
