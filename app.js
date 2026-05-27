@@ -1212,11 +1212,10 @@ function getImportByIdx(idx) {
   return hist[idx] || null;
 }
 window.excluirImport = function(idx) {
-  const entry = getImportByIdx(idx);
-  if (!entry) return;
+  const entry = getImportByIdx(idx); if (!entry) return;
   if (!confirm('Excluir o import "' + entry.label + '"?')) return;
-    saveState(); showToast('Import excluído.','info');
-  saveState(); renderQuestoes(); showToast('Import excluído.','info');
+  S.questoes_history = (S.questoes_history||[]).filter(function(h){ return h.id !== entry.id; });
+  saveState(); renderQuestoes_imports(); showToast('Import excluído.','info');
 };
 window.iniciarRenomearImport = function(idx) {
   document.getElementById('impv-'+idx).style.display='none';
@@ -1230,10 +1229,19 @@ window.cancelarRenomearImport = function(idx) {
 };
 window.salvarRenomearImport = function(idx) {
   const entry = getImportByIdx(idx); if (!entry) return;
-  const novo  = document.getElementById('impn-'+idx)?.value.trim();
+  const novo = document.getElementById('impn-'+idx)?.value.trim();
   if (!novo) { showToast('Nome não pode ser vazio.','error'); return; }
-    saveState(); showToast('Nome atualizado!');
-  saveState(); renderQuestoes(); showToast('Nome atualizado!');
+  entry.label = novo;
+  saveState(); renderQuestoes_imports(); showToast('Nome atualizado!');
+};
+
+// Atualiza só a lista de imports (sem recarregar gráfico)
+function renderQuestoes_imports() {
+  var container = document.getElementById('questoesContainer');
+  if (!container) return;
+  // Re-renderizar a seção de imports que está no final do HTML do container
+  // Simples: re-chamar o renderQuestoes completo
+  if (typeof renderQuestoes === 'function') renderQuestoes();
 };
 
 // ============================================================
@@ -1429,27 +1437,27 @@ window.renderTemplates = async function() {
     }
     container.innerHTML = snap.docs.map(doc => {
       const t = doc.data(), isOwn = t.autorUid === currentUser?.uid;
-      const editing = window._editingTemplate && window._editingTemplate.id === t.id;
+      const editing = window._editingTemplate && window._editingTemplate.id === docId;
 
-      let html = '<div class="template-card" id="tpl-'+t.id+'">';
+      let html = '<div class="template-card" id="tpl-'+docId+'">';
       // ── Cabeçalho ─────────────────────────────────────────────
       html += '<div class="template-header">';
       html += '<div style="flex:1;min-width:0">';
       // Nome (view / edit)
-      html += '<div id="tpl-view-'+t.id+'" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">';
+      html += '<div id="tpl-view-'+docId+'" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">';
       html += '<span class="template-nome">' + t.nome + '</span>';
       if (isOwn) html += '<span class="own-badge">SEU</span>';
-      if (isOwn) html += '<button class="btn-icon" title="Renomear" onclick="editarNomeTemplate(\''+t.id+'\',\''+t.nome.replace(/'/g,"\\'")+'\')" >✏️</button>';
+      if (isOwn) html += '<button class="btn-icon" title="Renomear" onclick="editarNomeTemplate(\''+docId+'\',\''+t.nome.replace(/'/g,"\\'")+'\')" >✏️</button>';
       html += '</div>';
-      html += '<div id="tpl-edit-'+t.id+'" style="display:none;margin-top:6px"><div style="display:flex;gap:6px;align-items:center"><input id="tpl-input-'+t.id+'" value="'+t.nome+'" style="flex:1;font-size:13px"><button class="btn btn-p" style="padding:5px 10px;font-size:11px" onclick="salvarNomeTemplate(\''+t.id+'\')">✔</button><button class="btn btn-g" style="padding:5px 10px;font-size:11px" onclick="cancelarEditTemplate(\''+t.id+'\')">✕</button></div></div>';
+      html += '<div id="tpl-edit-'+docId+'" style="display:none;margin-top:6px"><div style="display:flex;gap:6px;align-items:center"><input id="tpl-input-'+docId+'" value="'+t.nome+'" style="flex:1;font-size:13px"><button class="btn btn-p" style="padding:5px 10px;font-size:11px" onclick="salvarNomeTemplate(\''+docId+'\')">✔</button><button class="btn btn-g" style="padding:5px 10px;font-size:11px" onclick="cancelarEditTemplate(\''+docId+'\')">✕</button></div></div>';
       html += '<div class="template-meta">por ' + t.autor + ' · ' + (editing ? window._editingTemplate.disciplinas.length : (t.disciplinas||[]).length) + ' disciplinas · ' + new Date(t.criadoEm).toLocaleDateString('pt-BR') + '</div>';
       html += '</div>';
       // Botões de ação
       html += '<div style="display:flex;gap:6px;flex-shrink:0">';
-      if (isOwn && !editing) html += '<button class="btn btn-g" style="font-size:11px" onclick="abrirEdicaoTemplate(\''+t.id+'\')">✏️ Editar</button>';
+      if (isOwn && !editing) html += '<button class="btn btn-g" style="font-size:11px" onclick="abrirEdicaoTemplate(\''+docId+'\')">✏️ Editar</button>';
       if (isOwn && editing)  html += '<button class="btn btn-g" style="font-size:11px;color:#ef4444;border-color:#ef4444" onclick="cancelarEdicaoTemplate()">✕ Cancelar</button>';
-      if (isOwn) html += '<button class="btn btn-g" style="font-size:11px;padding:6px 10px" onclick="deletarTemplate(\''+t.id+'\')">🗑️</button>';
-      if (!editing) html += '<button class="btn btn-p" style="font-size:12px" onclick="importarTemplate(\''+t.id+'\')">↓ Importar</button>';
+      if (isOwn) html += '<button class="btn btn-g" style="font-size:11px;padding:6px 10px" onclick="deletarTemplate(\''+docId+'\')">🗑️</button>';
+      if (!editing) html += '<button class="btn btn-p" style="font-size:12px" onclick="importarTemplate(\''+docId+'\')">↓ Importar</button>';
       html += '</div></div>';
 
       if (editing) {
@@ -1509,7 +1517,7 @@ window.abrirEdicaoTemplate = async function(id) {
   try {
     const snap = await db.collection('templates').doc(id).get();
     if (!snap.exists) { showToast('Template não encontrado.','error'); return; }
-    window._editingTemplate = { id, ...snap.data() };
+    window._editingTemplate = { ...snap.data(), id }; // id = docId real
     // Garantir cópia profunda das disciplinas para edição local
     window._editingTemplate.disciplinas = JSON.parse(JSON.stringify(window._editingTemplate.disciplinas||[]));
     renderTemplates();
