@@ -6,8 +6,8 @@
 <title>APROVADO · Tracker de Alta Performance</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Syne:wght@700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<!-- SheetJS carregado sob demanda via lazyLoadXLSX() -->
+<!-- Chart.js removido -->
 <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore-compat.js"></script>
@@ -17,7 +17,7 @@
 <div id="toastContainer"></div>
 
 <!-- ── LOGIN ── -->
-<div class="login-screen" id="loginScreen">
+<div class="login-screen" id="loginScreen" style="display:flex">
   <div class="login-box">
     <div class="login-wordmark">
       <div class="login-wordmark-icon"><svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M2 7h10M7 2l5 5-5 5" stroke="#09090b" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
@@ -33,7 +33,7 @@
 </div>
 
 <!-- ── APP SHELL ── -->
-<div class="app-shell" id="appShell" style="display:none">
+<div class="app-shell" id="appShell" style="display:flex;visibility:hidden">
   <aside class="sidebar" id="sidebar">
     <div class="sb-top">
       <div class="sb-brand">
