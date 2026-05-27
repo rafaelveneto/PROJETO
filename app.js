@@ -794,6 +794,33 @@ window.renderQuestoes = function() {
   let criticas=[];
   (discNomeFilt?(latest.disciplinas||[]).filter(d=>d.nome.toLowerCase()===discNomeFilt.toLowerCase()):(latest.disciplinas||[])).forEach(d=>{ const cfg=(S.disciplinas||[]).find(x=>x.nome.toLowerCase()===d.nome.toLowerCase()); const meta=cfg?.metaAcerto||80; (d.topicos||[]).forEach(t=>{ if (t.qResolvidas>=10&&t.pctAcerto<meta){ const temR=cfg?getPendingForDisc(cfg.id).some(p=>['QUESTOES','REVISAO'].includes(p.type)):false; criticas.push({disc:d.nome,topico:t.nome,acerto:t.pctAcerto,meta,temR}); } }); });
   if (criticas.length){ criticas.sort((a,b)=>a.acerto-b.acerto); html+=`<div class="card"><div class="ct" style="color:var(--re)">⚠️ UTI / Revisão Crítica</div><div class="rev-list">${criticas.slice(0,10).map(r=>`<div class="rev-item"><div><div class="rev-topic">${r.topico}${r.temR?'<span class="tag-reforco" style="margin-left:6px">⚠️ REFORÇO</span>':''}</div><div class="rev-disc">${r.disc}</div></div><div class="rev-metrics"><div class="rev-metric-box"><span class="rev-metric-lbl">Acerto</span><span class="rev-metric-val val-danger">${Math.round(r.acerto)}%</span></div><div class="rev-metric-box"><span class="rev-metric-lbl">Meta</span><span class="rev-metric-val" style="color:var(--tx2)">${r.meta}%</span></div></div></div>`).join('')}</div></div>`; }
+  // ── Lista de imports gerenciáveis ──────────────────────────
+  const histAll = (S.questoes_history||[]).slice().reverse();
+  if (histAll.length) {
+    html += '<div class="card" style="margin-top:16px">';
+    html += '<div class="ct">📂 Importações Salvas (' + histAll.length + ')</div>';
+    html += '<div style="display:flex;flex-direction:column;gap:6px">';
+    histAll.forEach(function(h) {
+      const corH = h.pctGeral>=70?'#22c55e':h.pctGeral>=60?'#eab308':'#ef4444';
+      html += '<div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:#1c1c1f;border:1px solid #3f3f46;border-radius:6px">';
+      // View mode
+      html += '<div id="imp-view-'+h.id+'" style="display:flex;align-items:center;gap:8px;flex:1">';
+      html += '<span style="font-size:12px;font-weight:500;color:#f4f4f5;flex:1">'+h.label+'</span>';
+      html += '<span style="font-size:11px;color:'+corH+';font-weight:700">'+h.pctGeral+'%</span>';
+      html += '<span style="font-size:11px;color:#71717a">'+h.total+' q</span>';
+      html += '<button class="btn-icon" onclick="iniciarRenomearImport(' + JSON.stringify(h.id) + ')" title="Renomear">✏️</button>';
+      html += '<button class="btn-icon" onclick="excluirImport(' + JSON.stringify(h.id) + ')" title="Excluir" style="color:#ef4444">🗑️</button>';
+      html += '</div>';
+      // Edit mode
+      html += '<div id="imp-edit-'+h.id+'" style="display:none;align-items:center;gap:6px;flex:1">';
+      html += '<input id="imp-nome-'+h.id+'" value="'+h.label+'" style="flex:1;padding:5px 8px;background:#111114;border:1px solid #3f3f46;color:#f4f4f5;border-radius:5px;font-size:12px">';
+      html += '<button class="btn btn-p" style="padding:4px 10px;font-size:11px" onclick="salvarRenomearImport(' + JSON.stringify(h.id) + ')">✔</button>';
+      html += '<button class="btn btn-g" style="padding:4px 10px;font-size:11px" onclick="cancelarRenomearImport(' + JSON.stringify(h.id) + ')">✕</button>';
+      html += '</div>';
+      html += '</div>';
+    });
+    html += '</div></div>';
+  }
   container.innerHTML=html;
   setTimeout(()=>{
     const ctx=document.getElementById('qChartAdvanced')?.getContext('2d'); if (!ctx) return;
@@ -1121,39 +1148,146 @@ window.lerXlsx = function(input) {
   document.getElementById('file-upload-text').textContent=`📄 ${file.name}`;
   const reader=new FileReader();
   reader.onload=e=>{ try {
-    const wb=XLSX.read(e.target.result,{type:'array'}), sheet=wb.Sheets[wb.SheetNames[0]];
-    const data=XLSX.utils.sheet_to_json(sheet,{header:1,defval:null,raw:true});
-    const norm=s=>String(s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
-    const headers=data[0].map(h=>norm(h));
-    const fc=n=>headers.findIndex(h=>h.includes(norm(n)));
-    const idxN=fc('indice'), idxH=fc('hierarquia'), idxQ=fc('resolvidas'), idxA=fc('quantidade de acertos'), idxP=fc('acertos (%)');
-    if(idxN<0){showToast('Coluna "índice" não encontrada no arquivo.','error');return;}
-    let discs=[],cur=null,totQ=0,totA=0;
-    for (let i=1;i<data.length;i++){ const row=data[i]; if (!row[idxN]) continue; const nome=String(row[idxN]).trim(),hier=String(row[idxH]||'').trim(),qR=Number(row[idxQ])||0,qA=Number(row[idxA])||0,pct=Number(row[idxP])||0; if (hier===''){
-        // Linha de disciplina: acumular totais globais aqui
-        cur={nome,qResolvidas:qR,acertos:qA,pctAcerto:pct,topicos:[]};
+    const wb = XLSX.read(e.target.result, {type:'array'});
+    const sheet = wb.Sheets[wb.SheetNames[0]];
+
+    // Usar defval:'' para garantir que células vazias = string vazia (nunca null/undefined)
+    const rows = XLSX.utils.sheet_to_json(sheet, {header:1, defval:'', raw:false});
+    if (!rows || rows.length < 2) { showToast('Arquivo vazio.','error'); return; }
+
+    // Normaliza string: lowercase + remove acentos
+    const N = s => String(s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim();
+
+    const hdr = rows[0].map(N);
+    const col = name => hdr.findIndex(h => h && h.includes(N(name)));
+
+    const C = {
+      hier : col('hierarquia'),
+      nome : col('indice'),
+      qRes : col('resolvidas'),
+      pct  : col('acertos (%)'),
+      qAce : col('quantidade de acertos'),
+      peso : col('peso'),
+    };
+
+    console.log('[TecConcursos] Headers:', hdr);
+    console.log('[TecConcursos] Colunas:', C);
+    console.log('[TecConcursos] Linha 2:', rows[1]);
+
+    if (C.nome < 0) {
+      showToast('Coluna "índice" não encontrada. Verifique o arquivo TecConcursos.','error');
+      return;
+    }
+
+    let discs = [], cur = null, totQ = 0, totA = 0;
+
+    for (let r = 1; r < rows.length; r++) {
+      const row = rows[r];
+
+      // Nome da linha (coluna B normalmente)
+      const nome = String(row[C.nome] || '').trim();
+      if (!nome) continue;
+
+      // Hierarquia: vazia → disciplina; preenchida → subtópico
+      const hier = C.hier >= 0 ? String(row[C.hier] || '').trim() : '';
+
+      // Valores numéricos — converter de forma defensiva
+      const qRes  = parseFloat(row[C.qRes]) || 0;
+      const pctV  = parseFloat(row[C.pct])  || 0;
+      // qAce: preferir coluna direta; senão calcular de qRes * pct/100
+      const qAce  = C.qAce >= 0
+        ? (parseFloat(row[C.qAce]) || Math.round(qRes * pctV / 100))
+        : Math.round(qRes * pctV / 100);
+      const peso  = C.peso >= 0 ? (parseFloat(row[C.peso]) || 1) : 1;
+
+      if (!hier) {
+        // ── DISCIPLINA (linha pai) ──────────────────────────────
+        cur = { nome, qResolvidas: qRes, acertos: qAce, pctAcerto: pctV, peso, topicos: [] };
         discs.push(cur);
-        totQ+=qR; totA+=qA;
-      } else if (cur){
-        // Subtópico: adicionar à disciplina atual (totais já contados na linha pai)
-        cur.topicos.push({nome,qResolvidas:qR,acertos:qA,pctAcerto:pct});
-      } }
-    if (!discs.length){ showToast('Nenhuma disciplina encontrada no arquivo.','error'); return; }
-    const pctG=totQ?Math.round(totA/totQ*1000)/10:0, label=document.getElementById('xls-label').value.trim()||new Date().toLocaleDateString('pt-BR');
-    console.log('[Parser XLSX] Disciplinas:', discs.length, '| TotQ:', totQ, '| TotA:', totA, '| Pct:', pctG);
-    _xlsxParsed={id:uid(),importadoEm:new Date().toISOString(),label,total:totQ,pctGeral:pctG,disciplinas:discs};
-    const weak=discs.reduce((acc,d)=>{ const cfg=(S.disciplinas||[]).find(x=>x.nome.toLowerCase()===d.nome.toLowerCase()); const meta=cfg?.metaAcerto||80; return acc+(d.topicos||[]).filter(t=>t.pctAcerto<meta&&t.qResolvidas>=5).length; },0);
-    const cor=pctG>=70?'var(--gr)':'var(--re)';
-    document.getElementById('xls-preview').innerHTML=`<div style="color:var(--tx3);font-size:11px;margin-bottom:8px;text-transform:uppercase;letter-spacing:.06em">Preview — ${label}</div><div class="tec-preview-grid"><div class="tec-preview-card"><div class="tec-preview-val">${totQ}</div><div class="tec-preview-lbl">Questões</div></div><div class="tec-preview-card"><div class="tec-preview-val" style="color:${cor}">${pctG}%</div><div class="tec-preview-lbl">Acerto</div></div><div class="tec-preview-card"><div class="tec-preview-val">${discs.length}</div><div class="tec-preview-lbl">Matérias</div></div><div class="tec-preview-card"><div class="tec-preview-val" style="color:var(--re)">${weak}</div><div class="tec-preview-lbl">Pontos Fracos</div></div></div><div style="display:flex;gap:10px;justify-content:flex-end;margin-top:14px"><button class="btn btn-g" onclick="cancelarXlsx()">Cancelar</button><button class="btn btn-p" onclick="confirmarXlsx()">✔ Confirmar e Salvar</button></div>`;
-  } catch(err){ showToast('Erro ao processar planilha.','error'); } };
-  reader.readAsArrayBuffer(file);
+        totQ += qRes;   // acumular aqui (não nos subtópicos)
+        totA += qAce;
+      } else if (cur) {
+        // ── SUBTÓPICO ──────────────────────────────────────────
+        cur.topicos.push({ nome, qResolvidas: qRes, acertos: qAce, pctAcerto: pctV });
+      }
+    }
+
+    console.log('[TecConcursos] Resultado: discs=' + discs.length + ' totQ=' + totQ + ' totA=' + totA);
+
+    if (!discs.length) {
+      showToast('Nenhuma disciplina encontrada. Verifique o formato do arquivo.','error');
+      return;
+    }
+
+    const pctG  = totQ > 0 ? Math.round(totA / totQ * 1000) / 10 : 0;
+    const label = (document.getElementById('xls-label')?.value || '').trim()
+                || new Date().toLocaleDateString('pt-BR');
+
+    _xlsxParsed = { id: uid(), importadoEm: new Date().toISOString(), label, total: totQ, pctGeral: pctG, disciplinas: discs };
+
+    // Preview
+    const cor  = pctG >= 70 ? '#22c55e' : pctG >= 60 ? '#eab308' : '#ef4444';
+    const weak = discs.reduce((acc, d) => {
+      const meta = (S.disciplinas||[]).find(x => N(x.nome) === N(d.nome))?.metaAcerto || 80;
+      return acc + (d.topicos||[]).filter(t => t.pctAcerto < meta && t.qResolvidas >= 3).length;
+    }, 0);
+
+    document.getElementById('xls-preview').innerHTML =
+      '<div style="color:#a1a1aa;font-size:11px;margin-bottom:10px;text-transform:uppercase;letter-spacing:.06em">Preview — ' + label + '</div>' +
+      '<div class="tec-preview-grid">' +
+        '<div class="tec-preview-card"><div class="tec-preview-val">' + totQ + '</div><div class="tec-preview-lbl">Questões</div></div>' +
+        '<div class="tec-preview-card"><div class="tec-preview-val" style="color:' + cor + '">' + pctG + '%</div><div class="tec-preview-lbl">Acerto Global</div></div>' +
+        '<div class="tec-preview-card"><div class="tec-preview-val">' + discs.length + '</div><div class="tec-preview-lbl">Disciplinas</div></div>' +
+        '<div class="tec-preview-card"><div class="tec-preview-val" style="color:#ef4444">' + weak + '</div><div class="tec-preview-lbl">Pontos Fracos</div></div>' +
+      '</div>' +
+      '<div style="display:flex;gap:10px;justify-content:flex-end;margin-top:14px">' +
+        '<button class="btn btn-g" onclick="cancelarXlsx()">Cancelar</button>' +
+        '<button class="btn btn-p" onclick="confirmarXlsx()">✔ Confirmar e Salvar</button>' +
+      '</div>';
+
+  } catch(err) {
+    console.error('[TecConcursos] Erro:', err);
+    showToast('Erro ao processar planilha: ' + err.message,'error');
+  }
+};
+reader.readAsArrayBuffer(file);
 };
 window.confirmarXlsx = function() {
   if (!_xlsxParsed) return; (S.questoes_history=S.questoes_history||[]).push(_xlsxParsed); saveState();
   const label=_xlsxParsed.label; _xlsxParsed=null; document.getElementById('xls-preview').innerHTML=''; document.getElementById('xls-file').value=''; document.getElementById('xls-label').value=''; document.getElementById('file-upload-text').textContent='📂 Clique para selecionar o arquivo';
   showToast(`"${label}" importado!`); goTab('questoes');
 };
-window.cancelarXlsx = function() { _xlsxParsed=null; document.getElementById('xls-preview').innerHTML=''; document.getElementById('xls-file').value=''; document.getElementById('file-upload-text').textContent='📂 Clique para selecionar o arquivo'; };
+window.cancelarXlsx = function() {
+  _xlsxParsed=null;
+  document.getElementById('xls-preview').innerHTML='';
+  document.getElementById('xls-file').value='';
+  document.getElementById('file-upload-text').textContent='📂 Clique para selecionar o arquivo';
+};
+
+// ── Gestão de histórico de imports TecConcursos ──────────────
+window.excluirImport = function(id) {
+  const entry = (S.questoes_history||[]).find(h => h.id === id);
+  if (!entry) return;
+  if (!confirm('Excluir o import "' + entry.label + '"?')) return;
+  S.questoes_history = (S.questoes_history||[]).filter(h => h.id !== id);
+  saveState(); renderQuestoes(); showToast('Import excluído.','info');
+};
+window.iniciarRenomearImport = function(id) {
+  document.getElementById('imp-view-'+id).style.display='none';
+  document.getElementById('imp-edit-'+id).style.display='flex';
+  document.getElementById('imp-nome-'+id).focus();
+};
+window.cancelarRenomearImport = function(id) {
+  document.getElementById('imp-view-'+id).style.display='flex';
+  document.getElementById('imp-edit-'+id).style.display='none';
+};
+window.salvarRenomearImport = function(id) {
+  const entry = (S.questoes_history||[]).find(h => h.id === id); if (!entry) return;
+  const novo  = document.getElementById('imp-nome-'+id)?.value.trim();
+  if (!novo) { showToast('Nome não pode ser vazio.','error'); return; }
+  entry.label = novo;
+  saveState(); renderQuestoes(); showToast('Nome atualizado!');
+};
 
 // ============================================================
 // PLANEJAMENTO — DISCIPLINAS CRUD
