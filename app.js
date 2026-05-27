@@ -1123,12 +1123,24 @@ window.lerXlsx = function(input) {
   reader.onload=e=>{ try {
     const wb=XLSX.read(e.target.result,{type:'array'}), sheet=wb.Sheets[wb.SheetNames[0]];
     const data=XLSX.utils.sheet_to_json(sheet,{header:1,defval:null,raw:true});
-    const headers=data[0].map(h=>String(h||'').trim().toLowerCase());
-    const c=n=>headers.findIndex(h=>h.includes(n));
-    const idxN=c('índice')>-1?c('índice'):c('indice'), idxH=c('hierarquia'), idxQ=c('resolvidas'), idxA=c('quantidade de acertos'), idxP=c('acertos (%)');
+    const norm=s=>String(s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+    const headers=data[0].map(h=>norm(h));
+    const fc=n=>headers.findIndex(h=>h.includes(norm(n)));
+    const idxN=fc('indice'), idxH=fc('hierarquia'), idxQ=fc('resolvidas'), idxA=fc('quantidade de acertos'), idxP=fc('acertos (%)');
+    if(idxN<0){showToast('Coluna "índice" não encontrada no arquivo.','error');return;}
     let discs=[],cur=null,totQ=0,totA=0;
-    for (let i=1;i<data.length;i++){ const row=data[i]; if (!row[idxN]) continue; const nome=String(row[idxN]).trim(),hier=String(row[idxH]||'').trim(),qR=Number(row[idxQ])||0,qA=Number(row[idxA])||0,pct=Number(row[idxP])||0; if (hier===''){ cur={nome,qResolvidas:qR,acertos:qA,pctAcerto:pct,topicos:[]}; discs.push(cur); } else if (cur){ cur.topicos.push({nome,qResolvidas:qR,acertos:qA,pctAcerto:pct}); totQ+=qR; totA+=qA; } }
+    for (let i=1;i<data.length;i++){ const row=data[i]; if (!row[idxN]) continue; const nome=String(row[idxN]).trim(),hier=String(row[idxH]||'').trim(),qR=Number(row[idxQ])||0,qA=Number(row[idxA])||0,pct=Number(row[idxP])||0; if (hier===''){
+        // Linha de disciplina: acumular totais globais aqui
+        cur={nome,qResolvidas:qR,acertos:qA,pctAcerto:pct,topicos:[]};
+        discs.push(cur);
+        totQ+=qR; totA+=qA;
+      } else if (cur){
+        // Subtópico: adicionar à disciplina atual (totais já contados na linha pai)
+        cur.topicos.push({nome,qResolvidas:qR,acertos:qA,pctAcerto:pct});
+      } }
+    if (!discs.length){ showToast('Nenhuma disciplina encontrada no arquivo.','error'); return; }
     const pctG=totQ?Math.round(totA/totQ*1000)/10:0, label=document.getElementById('xls-label').value.trim()||new Date().toLocaleDateString('pt-BR');
+    console.log('[Parser XLSX] Disciplinas:', discs.length, '| TotQ:', totQ, '| TotA:', totA, '| Pct:', pctG);
     _xlsxParsed={id:uid(),importadoEm:new Date().toISOString(),label,total:totQ,pctGeral:pctG,disciplinas:discs};
     const weak=discs.reduce((acc,d)=>{ const cfg=(S.disciplinas||[]).find(x=>x.nome.toLowerCase()===d.nome.toLowerCase()); const meta=cfg?.metaAcerto||80; return acc+(d.topicos||[]).filter(t=>t.pctAcerto<meta&&t.qResolvidas>=5).length; },0);
     const cor=pctG>=70?'var(--gr)':'var(--re)';
