@@ -800,22 +800,23 @@ window.renderQuestoes = function() {
     html += '<div class="card" style="margin-top:16px">';
     html += '<div class="ct">📂 Importações Salvas (' + histAll.length + ')</div>';
     html += '<div style="display:flex;flex-direction:column;gap:6px">';
-    histAll.forEach(function(h) {
-      const corH = h.pctGeral>=70?'#22c55e':h.pctGeral>=60?'#eab308':'#ef4444';
-      html += '<div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:#1c1c1f;border:1px solid #3f3f46;border-radius:6px">';
-      // View mode
-      html += '<div id="imp-view-'+h.id+'" style="display:flex;align-items:center;gap:8px;flex:1">';
-      html += '<span style="font-size:12px;font-weight:500;color:#f4f4f5;flex:1">'+h.label+'</span>';
-      html += '<span style="font-size:11px;color:'+corH+';font-weight:700">'+h.pctGeral+'%</span>';
-      html += '<span style="font-size:11px;color:#71717a">'+h.total+' q</span>';
-      html += '<button class="btn-icon" onclick="iniciarRenomearImport(' + JSON.stringify(h.id) + ')" title="Renomear">✏️</button>';
-      html += '<button class="btn-icon" onclick="excluirImport(' + JSON.stringify(h.id) + ')" title="Excluir" style="color:#ef4444">🗑️</button>';
+    histAll.forEach(function(h, idx) {
+      var corH = h.pctGeral>=70?'#22c55e':h.pctGeral>=60?'#eab308':'#ef4444';
+      // Usar idx como chave — sem problema de aspas
+      html += '<div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:#1c1c1f;border:1px solid #3f3f46;border-radius:6px" data-imp-id="'+h.id+'">';
+      // View
+      html += '<div id="impv-'+idx+'" style="display:flex;align-items:center;gap:8px;flex:1;min-width:0">';
+      html += '<span style="font-size:13px;font-weight:500;color:#f4f4f5;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+h.label+'</span>';
+      html += '<span style="font-size:12px;color:'+corH+';font-weight:700;flex-shrink:0">'+h.pctGeral+'%</span>';
+      html += '<span style="font-size:11px;color:#71717a;flex-shrink:0">'+h.total+' q</span>';
+      html += '<button class="btn-icon" onclick="iniciarRenomearImport('+idx+')" title="Renomear">✏️</button>';
+      html += '<button class="btn-icon" onclick="excluirImport('+idx+')" title="Excluir" style="color:#ef4444">🗑️</button>';
       html += '</div>';
-      // Edit mode
-      html += '<div id="imp-edit-'+h.id+'" style="display:none;align-items:center;gap:6px;flex:1">';
-      html += '<input id="imp-nome-'+h.id+'" value="'+h.label+'" style="flex:1;padding:5px 8px;background:#111114;border:1px solid #3f3f46;color:#f4f4f5;border-radius:5px;font-size:12px">';
-      html += '<button class="btn btn-p" style="padding:4px 10px;font-size:11px" onclick="salvarRenomearImport(' + JSON.stringify(h.id) + ')">✔</button>';
-      html += '<button class="btn btn-g" style="padding:4px 10px;font-size:11px" onclick="cancelarRenomearImport(' + JSON.stringify(h.id) + ')">✕</button>';
+      // Edit
+      html += '<div id="impe-'+idx+'" style="display:none;align-items:center;gap:6px;flex:1">';
+      html += '<input id="impn-'+idx+'" value="'+h.label.replace(/"/g,'&quot;')+'" style="flex:1;padding:5px 8px;background:#111114;border:1px solid #3f3f46;color:#f4f4f5;border-radius:5px;font-size:12px">';
+      html += '<button class="btn btn-p" style="padding:4px 10px;font-size:11px" onclick="salvarRenomearImport('+idx+')">✔</button>';
+      html += '<button class="btn btn-g" style="padding:4px 10px;font-size:11px" onclick="cancelarRenomearImport('+idx+')">✕</button>';
       html += '</div>';
       html += '</div>';
     });
@@ -1152,8 +1153,9 @@ window.lerXlsx = function(input) {
     const sheet = wb.Sheets[wb.SheetNames[0]];
 
     // Usar defval:'' para garantir que células vazias = string vazia (nunca null/undefined)
-    const rows = XLSX.utils.sheet_to_json(sheet, {header:1, defval:'', raw:false});
-    if (!rows || rows.length < 2) { showToast('Arquivo vazio.','error'); return; }
+    const rows = XLSX.utils.sheet_to_json(sheet, {header:1, defval:'', raw:true});
+    if (!rows || rows.length < 2) { showToast('Arquivo sem dados. Verifique se o arquivo é do TecConcursos.','error'); return; }
+    console.log('[TecConcursos] Linhas lidas:', rows.length, '| Linha 1:', rows[0]);
 
     // Normaliza string: lowercase + remove acentos
     const N = s => String(s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim();
@@ -1265,25 +1267,31 @@ window.cancelarXlsx = function() {
 };
 
 // ── Gestão de histórico de imports TecConcursos ──────────────
-window.excluirImport = function(id) {
-  const entry = (S.questoes_history||[]).find(h => h.id === id);
+// idx = posição no array REVERSO (histAll = history.slice().reverse())
+function getImportByIdx(idx) {
+  const hist = (S.questoes_history||[]).slice().reverse();
+  return hist[idx] || null;
+}
+window.excluirImport = function(idx) {
+  const entry = getImportByIdx(idx);
   if (!entry) return;
   if (!confirm('Excluir o import "' + entry.label + '"?')) return;
-  S.questoes_history = (S.questoes_history||[]).filter(h => h.id !== id);
+  S.questoes_history = (S.questoes_history||[]).filter(h => h.id !== entry.id);
   saveState(); renderQuestoes(); showToast('Import excluído.','info');
 };
-window.iniciarRenomearImport = function(id) {
-  document.getElementById('imp-view-'+id).style.display='none';
-  document.getElementById('imp-edit-'+id).style.display='flex';
-  document.getElementById('imp-nome-'+id).focus();
+window.iniciarRenomearImport = function(idx) {
+  document.getElementById('impv-'+idx).style.display='none';
+  const ed = document.getElementById('impe-'+idx);
+  if (ed) { ed.style.display='flex'; document.getElementById('impn-'+idx)?.focus(); }
 };
-window.cancelarRenomearImport = function(id) {
-  document.getElementById('imp-view-'+id).style.display='flex';
-  document.getElementById('imp-edit-'+id).style.display='none';
+window.cancelarRenomearImport = function(idx) {
+  document.getElementById('impv-'+idx).style.display='flex';
+  const ed = document.getElementById('impe-'+idx);
+  if (ed) ed.style.display='none';
 };
-window.salvarRenomearImport = function(id) {
-  const entry = (S.questoes_history||[]).find(h => h.id === id); if (!entry) return;
-  const novo  = document.getElementById('imp-nome-'+id)?.value.trim();
+window.salvarRenomearImport = function(idx) {
+  const entry = getImportByIdx(idx); if (!entry) return;
+  const novo  = document.getElementById('impn-'+idx)?.value.trim();
   if (!novo) { showToast('Nome não pode ser vazio.','error'); return; }
   entry.label = novo;
   saveState(); renderQuestoes(); showToast('Nome atualizado!');
