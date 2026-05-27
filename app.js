@@ -336,7 +336,7 @@ function parseKeywords(text) {
 function renderTaskCard(t,idx) {
   const ti=TYPES[t.type]||TYPES.TEORIA, done=t.status==='concluida';
   const reforco=isReforco(t.discId,t.type), disc=(S.disciplinas||[]).find(d=>d.id===t.discId);
-  const hasD=t.comando||t.leiSeca||t.questoes||t.bizus||t.keywords;
+  const hasD=true; // form de acerto sempre disponível
   const fDur=m=>{ const h=Math.floor(m/60),r=m%60; return h>0?`${h}h${r>0?' '+r+'min':''}`:`${m}min`; };
   const dMin=t.duracaoMin||60, dMax=Math.round(dMin*1.25);
   const eBadge=(t.statusEdital&&!t.statusEdital.toLowerCase().includes('não'))?'<span class="edital-badge">✅ Edital</span>':'';
@@ -368,7 +368,7 @@ function renderTaskCard(t,idx) {
       ${t.bizus?`<div class="task-section"><div class="task-section-lbl">💡 Bizus</div>${parseBizus(t.bizus)}</div>`:''}
       ${t.questoes?`<div class="task-section"><div class="task-section-lbl">📝 Questões de Fixação</div><p style="font-size:12px;color:var(--tx2);white-space:pre-line;line-height:1.5">${t.questoes}</p></div>`:''}
       ${t.keywords?`<div class="task-section"><div class="task-section-lbl">🔑 Palavras-chave</div><div class="kw-pills">${parseKeywords(t.keywords)}</div></div>`:''}
-      ${t.type==='QUESTOES'?`<div class="task-section"><div class="task-section-lbl">📊 Registro de Acerto</div>
+      <div class="task-section"><div class="task-section-lbl">📊 Registro de Acerto</div>
         <div style="background:#111114;border:1px solid #3f3f46;border-radius:8px;padding:14px">
           <div style="display:grid;grid-template-columns:1fr 1fr auto;gap:10px;align-items:end;margin-bottom:12px">
             <div class="fg" style="margin:0">
@@ -391,7 +391,7 @@ function renderTaskCard(t,idx) {
           <div id="rev-preview-${t.id}" style="font-size:11px;color:#a1a1aa;margin-bottom:10px;padding:6px 10px;background:#18181b;border-radius:6px;display:${t.pctAcerto!=null?'block':'none'}">${t.pctAcerto!=null?'⏰ Próxima revisão: '+(t.pctAcerto<(S.config.revisao?.limiteUrgente||60)?'<strong style=color:#ef4444>'+(S.config.revisao?.diasUrgente||2)+' dias (urgente)</strong>':t.pctAcerto<(S.config.revisao?.limiteMedio||75)?'<strong style=color:#eab308>'+(S.config.revisao?.diasMedio||7)+' dias</strong>':'<strong style=color:#22c55e>'+(S.config.revisao?.diasBom||14)+' dias</strong>'):''}</div>
           <button class="btn btn-p" style="width:100%;padding:9px;font-size:12px;font-weight:600" onclick="salvarAcerto('${t.discId}','${t.aulaId}','${t.id}')">💾 Salvar Resultado</button>
         </div>
-      </div>`:''}
+      </div>
     </div>`:''}
   </div>`;
 }
@@ -531,13 +531,41 @@ window.toggleTarefa = function(discId,aulaId,tarefaId) {
   const d=(S.disciplinas||[]).find(x=>x.id===discId); if (!d) return;
   const aula=(d.aulas||[]).find(a=>a.id===aulaId); if (!aula) return;
   const tarefa=(aula.tarefas||[]).find(t=>t.id===tarefaId); if (!tarefa) return;
-  tarefa.status=tarefa.status==='concluida'?'pendente':'concluida';
+
+  const wasDone = tarefa.status === 'concluida';
+  tarefa.status = wasDone ? 'pendente' : 'concluida';
+
+  if (tarefa.status === 'concluida') {
+    tarefa.concluidaEm = new Date().toISOString();
+    // Se o card estiver aberto e os campos de acerto preenchidos, salvar junto
+    const qrEl = document.getElementById('qr-'+tarefaId);
+    const qaEl = document.getElementById('qa-'+tarefaId);
+    if (qrEl && qaEl) {
+      const qR = parseInt(qrEl.value)||0;
+      const qA = Math.min(parseInt(qaEl.value)||0, qR);
+      if (qR > 0) {
+        tarefa.qRespondidas = qR; tarefa.qAcertos = qA;
+        tarefa.pctAcerto    = Math.round(qA/qR*100);
+        const rv   = S.config?.revisao||{limiteUrgente:60,limiteMedio:75,diasUrgente:2,diasMedio:7,diasBom:14};
+        const dias = tarefa.pctAcerto<rv.limiteUrgente?rv.diasUrgente:tarefa.pctAcerto<rv.limiteMedio?rv.diasMedio:rv.diasBom;
+        tarefa.proximaRevisaoEm = new Date(Date.now()+dias*864e5).toISOString();
+        const emoji = tarefa.pctAcerto<rv.limiteUrgente?'🔴':tarefa.pctAcerto<rv.limiteMedio?'🟡':'🟢';
+        showToast('Concluída · '+tarefa.pctAcerto+'% · revisão em '+dias+'d '+emoji);
+      } else {
+        showToast('Tarefa concluída! ✅');
+      }
+    } else {
+      showToast('Tarefa concluída! ✅');
+    }
+  } else {
+    delete tarefa.concluidaEm; delete tarefa.proximaRevisaoEm;
+    showToast('Tarefa reaberta.');
+  }
   saveState(); renderHoje();
   if (document.getElementById('tab-historico')?.classList.contains('active')) renderHistorico();
   if (document.getElementById('tab-progresso')?.classList.contains('active'))  renderProgresso();
 };
 
-// Registro inline de acertos em tarefas de Questões
 window.calcPctAcerto = function(tarefaId) {
   const qR=parseInt(document.getElementById('qr-'+tarefaId)?.value)||0;
   const qA=parseInt(document.getElementById('qa-'+tarefaId)?.value)||0;
