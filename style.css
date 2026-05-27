@@ -739,3 +739,7 @@ input:focus, textarea:focus, select:focus { border-color: #f5a623; }
 ::-webkit-scrollbar-track { background: #111114; }
 ::-webkit-scrollbar-thumb { background: #3f3f46; border-radius: 3px; }
 ::-webkit-scrollbar-thumb:hover { background: #52525b; }
+
+/* Concurso selector */
+#concursoSelect { cursor: pointer; }
+#concursoSelect option { background: #18181b; }

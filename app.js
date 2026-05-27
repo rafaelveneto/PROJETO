@@ -38,14 +38,32 @@ if (!S.config)            S.config = {};
 if (!S.config.horasSemana) S.config.horasSemana = [0,4,4,4,4,4,2];
 if (!S.questoes_history)   S.questoes_history   = [];
 if (!S.disciplinas)        S.disciplinas        = [];
+if (!S.concursos)          S.concursos          = [];
 // Configurações de revisão (editáveis pelo usuário)
+if (!S.config.discsSelecionadas) S.config.discsSelecionadas = null; // null = todas
 if (!S.config.revisao) S.config.revisao = {
-  limiteUrgente: 60,  // abaixo disso → revisão em diasUrgente
-  limiteMedio:   75,  // abaixo disso → revisão em diasMedio
+  limiteUrgente: 60,
+  limiteMedio:   75,
   diasUrgente:   2,
   diasMedio:     7,
   diasBom:       14
 };
+// Migração: criar concurso padrão e associar disciplinas órfãs
+(function migrateConcursos() {
+  if (!S.concursos.length) {
+    const defaultId = 'c-' + Date.now();
+    S.concursos.push({ id: defaultId, nome: 'Analista Legislativo' });
+    S.concursoAtivo = defaultId;
+  }
+  if (!S.concursoAtivo) S.concursoAtivo = S.concursos[0].id;
+  // Associar disciplinas sem concursoId ao concurso padrão
+  (S.disciplinas||[]).forEach(d => {
+    if (!d.concursoId) d.concursoId = S.concursoAtivo;
+    // Migrar peso → percentual
+    if (d.percentual == null && d.peso != null) { d.percentual = d.peso; delete d.peso; }
+    if (d.percentual == null) d.percentual = 20;
+  });
+})();
 
 let currentUser    = null;
 let qPeriod        = 'all';
@@ -148,6 +166,21 @@ function applyFirebaseData(r) {
   if (!S.config.horasSemana) S.config.horasSemana = [0,4,4,4,4,4,2];
   if (!S.questoes_history)   S.questoes_history = [];
   if (!S.disciplinas)        S.disciplinas = [];
+  if (!S.concursos)          S.concursos = [];
+  // Migração pós-Firebase: criar concurso padrão e migrar disciplinas
+  (function migFB() {
+    if (!S.concursos.length) {
+      const did = 'c-' + Date.now();
+      S.concursos.push({ id: did, nome: 'Analista Legislativo' });
+      S.concursoAtivo = did;
+    }
+    if (!S.concursoAtivo) S.concursoAtivo = S.concursos[0].id;
+    (S.disciplinas||[]).forEach(function(d) {
+      if (!d.concursoId) d.concursoId = S.concursoAtivo;
+      if (d.percentual == null && d.peso != null) { d.percentual = d.peso; delete d.peso; }
+      if (d.percentual == null) d.percentual = 20;
+    });
+  })();
   // Garante que aulas seja sempre array em cada disciplina
   S.disciplinas = S.disciplinas.map(d => ({
     ...d, aulas: Array.isArray(d.aulas) ? d.aulas.map(a => ({
@@ -335,12 +368,28 @@ function renderTaskCard(t,idx) {
       ${t.bizus?`<div class="task-section"><div class="task-section-lbl">💡 Bizus</div>${parseBizus(t.bizus)}</div>`:''}
       ${t.questoes?`<div class="task-section"><div class="task-section-lbl">📝 Questões de Fixação</div><p style="font-size:12px;color:var(--tx2);white-space:pre-line;line-height:1.5">${t.questoes}</p></div>`:''}
       ${t.keywords?`<div class="task-section"><div class="task-section-lbl">🔑 Palavras-chave</div><div class="kw-pills">${parseKeywords(t.keywords)}</div></div>`:''}
-      ${t.type==='QUESTOES'?`<div class="task-section"><div class="task-section-lbl">📊 Registro de Desempenho</div>
-        <div class="acerto-inline">
-          <div class="fg"><label>Questões</label><input type="number" id="qr-${t.id}" value="${t.qRespondidas||''}" min="0" placeholder="Ex: 30" oninput="calcPctAcerto('${t.id}')"></div>
-          <div class="fg"><label>Acertos</label><input type="number" id="qa-${t.id}" value="${t.qAcertos||''}" min="0" placeholder="Ex: 21" oninput="calcPctAcerto('${t.id}')"></div>
-          <div class="fg"><label>% Acerto</label><div id="qpct-${t.id}" class="pct-display" style="color:${(t.pctAcerto||0)>=70?'var(--gr)':'var(--tx3)'}">${t.pctAcerto!=null?t.pctAcerto+'%':'—'}</div></div>
-          <button class="btn btn-p" style="padding:7px 14px;font-size:11px;align-self:end" onclick="salvarAcerto('${t.discId}','${t.aulaId}','${t.id}')">Salvar</button>
+      ${t.type==='QUESTOES'?`<div class="task-section"><div class="task-section-lbl">📊 Registro de Acerto</div>
+        <div style="background:#111114;border:1px solid #3f3f46;border-radius:8px;padding:14px">
+          <div style="display:grid;grid-template-columns:1fr 1fr auto;gap:10px;align-items:end;margin-bottom:12px">
+            <div class="fg" style="margin:0">
+              <label style="font-size:10px;color:#a1a1aa;font-weight:600;display:block;margin-bottom:4px">TOTAL DE QUESTÕES</label>
+              <input type="number" id="qr-${t.id}" value="${t.qRespondidas||''}" min="0" placeholder="Ex: 30"
+                style="width:100%;padding:8px 10px;background:#18181b;border:1px solid #3f3f46;color:#f4f4f5;border-radius:6px;font-size:14px"
+                oninput="calcPctAcerto('${t.id}')">
+            </div>
+            <div class="fg" style="margin:0">
+              <label style="font-size:10px;color:#a1a1aa;font-weight:600;display:block;margin-bottom:4px">ACERTOS</label>
+              <input type="number" id="qa-${t.id}" value="${t.qAcertos||''}" min="0" placeholder="Ex: 21"
+                style="width:100%;padding:8px 10px;background:#18181b;border:1px solid #3f3f46;color:#f4f4f5;border-radius:6px;font-size:14px"
+                oninput="calcPctAcerto('${t.id}')">
+            </div>
+            <div style="text-align:center;padding:8px 12px;background:#18181b;border:1px solid #3f3f46;border-radius:6px;min-width:70px">
+              <div id="qpct-${t.id}" style="font-size:22px;font-weight:700;font-family:monospace;color:${(t.pctAcerto||0)>=70?'#22c55e':(t.pctAcerto||0)>=60?'#eab308':'#ef4444'}">${t.pctAcerto!=null?t.pctAcerto+'%':'—'}</div>
+              <div style="font-size:9px;color:#71717a;margin-top:2px">ACERTO</div>
+            </div>
+          </div>
+          <div id="rev-preview-${t.id}" style="font-size:11px;color:#a1a1aa;margin-bottom:10px;padding:6px 10px;background:#18181b;border-radius:6px;display:${t.pctAcerto!=null?'block':'none'}">${t.pctAcerto!=null?'⏰ Próxima revisão: '+(t.pctAcerto<(S.config.revisao?.limiteUrgente||60)?'<strong style=color:#ef4444>'+(S.config.revisao?.diasUrgente||2)+' dias (urgente)</strong>':t.pctAcerto<(S.config.revisao?.limiteMedio||75)?'<strong style=color:#eab308>'+(S.config.revisao?.diasMedio||7)+' dias</strong>':'<strong style=color:#22c55e>'+(S.config.revisao?.diasBom||14)+' dias</strong>'):''}</div>
+          <button class="btn btn-p" style="width:100%;padding:9px;font-size:12px;font-weight:600" onclick="salvarAcerto('${t.discId}','${t.aulaId}','${t.id}')">💾 Salvar Resultado</button>
         </div>
       </div>`:''}
     </div>`:''}
@@ -531,6 +580,11 @@ window.marcarRevisao = function(discId,aulaId,tarefaId) {
   saveState(); renderHoje(); showToast('Revisão concluída ✅');
 };
 
+// Retorna disciplinas do concurso ativo
+function activeDiscs() {
+  return (S.disciplinas||[]).filter(d => d.concursoId === S.concursoAtivo);
+}
+
 // Retorna tarefas de Questões com revisão vencida ou no prazo hoje
 function getRevisoesPendentes() {
   const now = new Date();
@@ -556,11 +610,14 @@ function buildWeekPlan() {
   const NOMES   = ['Seg','Ter','Qua','Qui','Sex','Sáb','Dom'];
   const hs      = S.config.horasSemana || [0,4,4,4,4,4,2];
 
-  // Filas com TODAS as tarefas pendentes em ordem (não só a 1ª aula)
-  const queues = (S.disciplinas||[]).map(d=>{
-    const tasks = getPendingForDisc(d.id); // todas as aulas, em ordem
-    return tasks.length ? { tasks:[...tasks] } : null;
-  }).filter(Boolean);
+  // Filas com TODAS as tarefas pendentes em ordem, filtradas por discsSelecionadas
+  const sel = S.config?.discsSelecionadas; // null = todas
+  const queues = activeDiscs()
+    .filter(d => !sel || sel.includes(d.id))
+    .map(d=>{
+      const tasks = getPendingForDisc(d.id);
+      return tasks.length ? { tasks:[...tasks] } : null;
+    }).filter(Boolean);
 
   return HS_IDX.map((hsIdx, i) => {
     const date = new Date(monday);
@@ -784,6 +841,56 @@ window.simularProgresso = function() {
 };
 
 // ============================================================
+// SELETOR DE DISCIPLINAS PARA META DA SEMANA
+// ============================================================
+function renderSelectorDiscs() {
+  const el = document.getElementById('discSelectorBody'); if (!el) return;
+  const discs = activeDiscs();
+  const sel   = S.config.discsSelecionadas; // null = todas
+  if (!discs.length) { el.innerHTML = '<div style="color:#a1a1aa;font-size:12px;padding:8px">Nenhuma disciplina cadastrada.</div>'; return; }
+
+  var html = '<div style="display:flex;flex-direction:column;gap:6px;margin-top:10px">';
+  discs.forEach(function(d) {
+    var checked = !sel || sel.includes(d.id);
+    html += '<label style="display:flex;align-items:center;gap:10px;padding:7px 10px;background:#111114;border:1px solid #3f3f46;border-radius:6px;cursor:pointer">';
+    html += '<input type="checkbox" id="dsel-'+d.id+'" '+(checked?'checked':'')+' onchange="toggleDiscSel(\"'+d.id+'\")" style="width:14px;height:14px;accent-color:#f5a623">';
+    html += '<span style="width:8px;height:8px;border-radius:50%;background:'+(d.cor||'#a1a1aa')+';display:inline-block;flex-shrink:0"></span>';
+    html += '<span style="font-size:13px;color:#f4f4f5;flex:1">'+d.nome+'</span>';
+    html += '<span style="font-size:11px;color:#71717a">'+(d.percentual||0)+'%</span>';
+    html += '</label>';
+  });
+  html += '</div>';
+  html += '<div style="display:flex;gap:8px;margin-top:10px">';
+  html += '<button class="btn btn-g" style="font-size:11px" onclick="selecionarTodasDiscs(true)">Selecionar todas</button>';
+  html += '<button class="btn btn-g" style="font-size:11px" onclick="selecionarTodasDiscs(false)">Desmarcar todas</button>';
+  html += '</div>';
+  el.innerHTML = html;
+}
+window.toggleDiscSel = function(id) {
+  var discs = activeDiscs();
+  var sel   = S.config.discsSelecionadas;
+  if (!sel) sel = discs.map(function(d){ return d.id; }); // todas checadas → clonar
+  var idx = sel.indexOf(id);
+  if (idx > -1) sel.splice(idx, 1); else sel.push(id);
+  // Se todas marcadas, usar null (mais simples)
+  S.config.discsSelecionadas = sel.length === discs.length ? null : sel;
+  saveState();
+};
+window.selecionarTodasDiscs = function(todas) {
+  S.config.discsSelecionadas = todas ? null : [];
+  saveState(); renderSelectorDiscs();
+};
+window.toggleDiscSelector = function() {
+  var body = document.getElementById('discSelectorBody');
+  var btn  = document.getElementById('discSelectorBtn');
+  if (!body) return;
+  var open = body.style.display !== 'none';
+  body.style.display = open ? 'none' : 'block';
+  btn.textContent = open ? '▸ expandir' : '▾ recolher';
+  if (!open) renderSelectorDiscs();
+};
+
+// ============================================================
 // CONFIGURAÇÕES DE REVISÃO
 // ============================================================
 function renderConfigRevisao() {
@@ -853,10 +960,23 @@ function calcMeta(totalMins) {
 }
 window.renderAgendaGrid = function() {
   const hs=S.config.horasSemana||[0,4,4,4,4,4,2], dias=['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
-  const rv = S.config.revisao || { limiteUrgente:60, limiteMedio:75, diasUrgente:2, diasMedio:7, diasBom:14 };
+  const rv  = S.config.revisao || { limiteUrgente:60, limiteMedio:75, diasUrgente:2, diasMedio:7, diasBom:14 };
+  const sel = S.config.discsSelecionadas;
+  const discs = activeDiscs();
+  const nSel  = sel ? sel.length : discs.length;
   document.getElementById('semanaGridContainer').innerHTML=`<div class="day-grid">${dias.map((d,i)=>`<div class="day-cell"><div class="day-nm">${d}</div><input type="number" class="day-hi" value="${hs[i]}" min="0" max="16" onchange="updateHoraDia(${i},this.value)"></div>`).join('')}</div>
   <div class="meta-label" style="text-align:right;margin-top:8px">Total Planejado: <strong id="totalSemanaGrid">${hs.reduce((a,b)=>a+b,0)}h</strong></div>
   <div class="card" style="margin-top:16px;background:var(--s2);border:1px solid var(--bd)">
+    <div style="display:flex;justify-content:space-between;align-items:center">
+      <div>
+        <div class="ct" style="margin-bottom:2px">📚 Disciplinas desta semana</div>
+        <div style="font-size:11px;color:var(--tx3)">${nSel} de ${discs.length} disciplina(s) selecionada(s)</div>
+      </div>
+      <button id="discSelectorBtn" class="btn btn-g" style="font-size:11px" onclick="toggleDiscSelector()">▸ expandir</button>
+    </div>
+    <div id="discSelectorBody" style="display:none"></div>
+  </div>
+  <div class="card" style="margin-top:12px;background:var(--s2);border:1px solid var(--bd)">
     <div style="display:flex;justify-content:space-between;align-items:center">
       <div>
         <div class="ct" style="margin-bottom:2px">🔁 Intervalos de Revisão</div>
@@ -999,73 +1119,135 @@ window.cancelarXlsx = function() { _xlsxParsed=null; document.getElementById('xl
 // PLANEJAMENTO — DISCIPLINAS CRUD
 // ============================================================
 function renderDiscList() {
-  const container=document.getElementById('discList'); if (!container) return;
-  const discs=S.disciplinas||[];
-  if (!discs.length){
-    container.innerHTML=`<div class="empty-state">
-      <div class="empty-state-icon">📚</div>
-      <div class="empty-state-title">Nenhuma disciplina cadastrada</div>
-      <div class="empty-state-sub">Clique em <strong>+ Nova Disciplina</strong> para adicionar manualmente.</div>
-      ${currentUser?`<div style="margin-top:14px;display:flex;gap:8px;justify-content:center;flex-wrap:wrap">
-        <button class="btn btn-p" onclick="pullFirebase(true)">↓ Restaurar dados do Firebase</button>
-      </div>`:''}
-    </div>`;
+  const container = document.getElementById('discListContainer');
+  if (!container) return;
+
+  const discs = activeDiscs();
+  const concs = S.concursos || [];
+  const ativo = concs.find(c => c.id === S.concursoAtivo);
+  const totalPct = discs.reduce((s,d) => s + (Number(d.percentual)||0), 0);
+  const pctOk = Math.abs(totalPct - 100) < 1;
+
+  // ── Seletor de concurso ──
+  let html = '<div style="margin-bottom:18px">';
+  html += '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:12px">';
+  html += '<label style="font-size:11px;font-weight:700;color:#a1a1aa;text-transform:uppercase;letter-spacing:.08em">Concurso</label>';
+  html += '<select id="concursoSelect" onchange="switchConcurso(this.value)" style="flex:1;max-width:320px;padding:7px 10px;background:#111114;border:1px solid #3f3f46;color:#f4f4f5;border-radius:6px;font-size:13px">';
+  concs.forEach(c => {
+    html += '<option value="' + c.id + '"' + (c.id === S.concursoAtivo ? ' selected' : '') + '>' + c.nome + '</option>';
+  });
+  html += '</select>';
+  html += '<button class="btn btn-p" style="font-size:11px" onclick="openNovoConcurso()">+ Novo concurso</button>';
+  if (concs.length > 1) {
+    html += '<button class="btn btn-g" style="font-size:11px;color:#ef4444;border-color:#ef4444" onclick="deletarConcurso()">🗑️</button>';
+  }
+  html += '</div>';
+
+  // Formulário inline novo concurso
+  html += '<div id="novoConcursoForm" style="display:none;background:#111114;border:1px solid #3f3f46;border-radius:8px;padding:12px;margin-bottom:12px">';
+  html += '<div style="font-size:12px;font-weight:600;color:#f4f4f5;margin-bottom:8px">Novo Concurso</div>';
+  html += '<div style="display:flex;gap:8px">';
+  html += '<input id="novoConcursoNome" placeholder="Ex: Receita Federal — Auditor" style="flex:1;padding:7px 10px;background:#18181b;border:1px solid #3f3f46;color:#f4f4f5;border-radius:6px;font-size:13px">';
+  html += '<button class="btn btn-p" onclick="salvarNovoConcurso()">Criar</button>';
+  html += '<button class="btn btn-g" onclick="fecharNovoConcurso()">✕</button>';
+  html += '</div></div>';
+
+  // Indicador de % total
+  html += '<div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:' + (pctOk ? 'rgba(34,197,94,.08)' : 'rgba(234,179,8,.08)') + ';border:1px solid ' + (pctOk ? 'rgba(34,197,94,.25)' : 'rgba(234,179,8,.25)') + ';border-radius:6px;font-size:12px">';
+  html += '<span style="color:' + (pctOk ? '#22c55e' : '#eab308') + '">' + (pctOk ? '✅' : '⚠️') + ' Total alocado: <strong>' + totalPct + '%</strong></span>';
+  if (!pctOk) html += '<span style="color:#a1a1aa;margin-left:4px">— ajuste os percentuais para somar 100%</span>';
+  html += '</div>';
+  html += '</div>';
+
+  // ── Lista de disciplinas ──
+  if (!discs.length) {
+    html += '<div class="empty-state"><div class="empty-state-icon">📚</div><div class="empty-state-title">Nenhuma disciplina cadastrada</div><div class="empty-state-sub">Clique em <strong>+ Nova Disciplina</strong> para começar.</div></div>';
+    container.innerHTML = html;
     return;
   }
-  container.innerHTML=discs.map(d=>{
-    const aulas=d.aulas||[];
-    return `<div class="disc-card" id="disc-${d.id}">
-      <div class="disc-card-header">
-        <div style="display:flex;align-items:center;gap:10px">
-          <div class="disc-dot" style="background:${d.cor||'#888'}"></div>
-          <span class="disc-card-name">${d.nome}</span>
-          ${d.nivelConhecimento?`<span class="nivel-badge nivel-${d.nivelConhecimento}">${NIVEL_LABEL[d.nivelConhecimento]}</span>`:''}
-        </div>
-        <div class="disc-card-actions">
-          <button class="btn-icon" onclick="toggleEditDisc('${d.id}')">✏️</button>
-          <button class="btn-icon btn-icon-danger" onclick="removeDisc('${d.id}')">🗑️</button>
-        </div>
-      </div>
-      <div id="disc-view-${d.id}" class="disc-meta-row">
-        <span class="disc-badge">Peso: ${d.peso||10}</span>
-        <span class="disc-badge">Meta: ${d.metaAcerto||80}%</span>
-        <span class="disc-badge">${aulas.length} aula(s)</span>
-        ${aulas.length>0?`<button class="btn-icon" style="margin-left:auto" onclick="toggleAulaList('${d.id}')">📂 ver aulas</button>`:''}
-      </div>
-      <div id="disc-edit-${d.id}" class="disc-edit-form" style="display:none">
-        <div class="disc-edit-grid">
-          <div class="fg"><label>Peso</label><input type="number" id="de-peso-${d.id}" value="${d.peso||10}" min="1" max="100"></div>
-          <div class="fg"><label>Meta (%)</label><input type="number" id="de-meta-${d.id}" value="${d.metaAcerto||80}" min="50" max="100"></div>
-          <div class="fg"><label>Cor</label><input type="color" id="de-cor-${d.id}" value="${d.cor||'#3b82f6'}" class="input-color"></div>
-        </div>
-        <div class="fg" style="margin-top:8px"><label>Nível de Conhecimento</label>
-          <select id="de-nivel-${d.id}">
-            <option value="nunca" ${d.nivelConhecimento==='nunca'?'selected':''}>🔴 Nunca estudei</option>
-            <option value="comecei" ${d.nivelConhecimento==='comecei'?'selected':''}>🟡 Comecei</option>
-            <option value="terminei" ${d.nivelConhecimento==='terminei'?'selected':''}>🟠 Terminei sem confiança</option>
-            <option value="aparar" ${d.nivelConhecimento==='aparar'?'selected':''}>🟢 Aparar arestas</option>
-          </select>
-        </div>
-        <div style="display:flex;gap:6px;margin-top:10px;justify-content:flex-end">
-          <button class="btn btn-g" style="padding:6px 12px;font-size:11px" onclick="toggleEditDisc('${d.id}')">Cancelar</button>
-          <button class="btn btn-p" style="padding:6px 12px;font-size:11px" onclick="saveEditDisc('${d.id}')">✔ Salvar</button>
-        </div>
-      </div>
-      <div id="disc-aulas-${d.id}" class="disc-aulas-section">
-        ${sortedAulas(aulas).map(a=>`<div class="aula-row">
-          <div class="aula-row-info">
-            <div class="aula-row-title">${a.codigo} — ${a.titulo}</div>
-            <div class="aula-row-meta">${(a.tarefas||[]).length} tarefa(s) · ${(a.tarefas||[]).filter(t=>t.status==='concluida').length} concluída(s)</div>
-          </div>
-          <div class="aula-row-actions">
-            ${discs.filter(x=>x.id!==d.id).length>0?`<select class="move-disc-select" id="ms-${a.id}">${discs.filter(x=>x.id!==d.id).map(x=>`<option value="${x.id}">${x.nome}</option>`).join('')}</select><button class="btn-icon" onclick="moverAula('${d.id}','${a.id}')">↗</button>`:''}
-            <button class="btn-icon btn-icon-danger" onclick="deleteAula('${d.id}','${a.id}')">🗑️</button>
-          </div>
-        </div>`).join('')}
-      </div>
-    </div>`;
+
+  html += discs.map(d => {
+    const isOpen = d._editOpen;
+    const pct = Number(d.percentual)||0;
+    let cardHtml = '<div class="disc-card" id="dc-' + d.id + '">';
+    cardHtml += '<div class="disc-card-header">';
+    cardHtml += '<div style="display:flex;align-items:center;gap:8px">';
+    cardHtml += '<span style="width:10px;height:10px;border-radius:50%;background:' + (d.cor||'#a1a1aa') + ';display:inline-block;flex-shrink:0"></span>';
+    cardHtml += '<span class="disc-card-name">' + d.nome + '</span>';
+    cardHtml += '</div>';
+    cardHtml += '<div style="display:flex;align-items:center;gap:6px">';
+    cardHtml += '<button class="btn-icon" onclick="editDisc(\'' + d.id + '\')" title="Editar">✏️</button>';
+    cardHtml += '<button class="btn-icon" onclick="deleteDisc(\'' + d.id + '\')" title="Excluir">🗑️</button>';
+    cardHtml += '</div></div>';
+
+    if (isOpen) {
+      cardHtml += '<div class="disc-edit-form">';
+      cardHtml += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">';
+      cardHtml += '<div class="fg"><label>Percentual (%)</label><input type="number" id="dp-' + d.id + '" value="' + pct + '" min="0" max="100" style="width:100%"></div>';
+      cardHtml += '<div class="fg"><label>Meta de acerto (%)</label><input type="number" id="dm-' + d.id + '" value="' + (d.metaAcerto||80) + '" min="0" max="100" style="width:100%"></div>';
+      cardHtml += '</div>';
+      cardHtml += '<div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">';
+      cardHtml += '<div class="fg" style="flex:1"><label>Nível de conhecimento</label>';
+      cardHtml += '<select id="dn-' + d.id + '" style="width:100%">';
+      [['nunca','🔴 Nunca estudei'],['pouco','🟡 Estudei pouco'],['medio','🟢 Conheço razoavelmente'],['bom','💪 Conheço bem']].forEach(([v,l]) => {
+        cardHtml += '<option value="' + v + '"' + (d.nivelConhecimento===v?' selected':'') + '>' + l + '</option>';
+      });
+      cardHtml += '</select></div>';
+      cardHtml += '<div class="fg" style="flex-shrink:0"><label>Cor</label><input type="color" id="dc2-' + d.id + '" value="' + (d.cor||'#6366f1') + '" style="width:48px;height:36px;padding:2px;border-radius:6px;border:1px solid #3f3f46;background:transparent;cursor:pointer"></div>';
+      cardHtml += '</div>';
+      cardHtml += '<div style="display:flex;gap:8px;justify-content:flex-end">';
+      cardHtml += '<button class="btn btn-g" onclick="editDisc(\'' + d.id + '\')">Cancelar</button>';
+      cardHtml += '<button class="btn btn-p" onclick="saveDisc(\'' + d.id + '\')">✔ Salvar</button>';
+      cardHtml += '</div></div>';
+    } else {
+      cardHtml += '<div class="disc-badges">';
+      cardHtml += '<span class="disc-badge">' + pct + '%</span>';
+      cardHtml += '<span class="disc-badge">Meta: ' + (d.metaAcerto||80) + '%</span>';
+      const aulasCount = (d.aulas||[]).length;
+      if (aulasCount) cardHtml += '<span class="disc-badge">' + aulasCount + ' aula(s)</span>';
+      cardHtml += '<button class="btn btn-g" style="font-size:11px;padding:3px 10px;margin-left:auto" onclick="verAulas(\'' + d.id + '\')">📁 ver aulas</button>';
+      cardHtml += '</div>';
+    }
+    cardHtml += '</div>';
+    return cardHtml;
   }).join('');
+
+  container.innerHTML = html;
 }
+
+window.switchConcurso = function(id) {
+  S.concursoAtivo = id;
+  saveState(); renderDiscList(); renderHoje(); populateDiscDropdowns();
+  showToast('Concurso alterado!');
+};
+window.openNovoConcurso = function() {
+  document.getElementById('novoConcursoForm').style.display = 'block';
+  document.getElementById('novoConcursoNome').focus();
+};
+window.fecharNovoConcurso = function() {
+  document.getElementById('novoConcursoForm').style.display = 'none';
+};
+window.salvarNovoConcurso = function() {
+  const nome = document.getElementById('novoConcursoNome')?.value.trim();
+  if (!nome) { showToast('Digite um nome.','error'); return; }
+  const id = 'c-' + Date.now();
+  (S.concursos = S.concursos||[]).push({ id, nome });
+  S.concursoAtivo = id;
+  saveState(); renderDiscList();
+  showToast('Concurso "' + nome + '" criado!');
+};
+window.deletarConcurso = function() {
+  if ((S.concursos||[]).length <= 1) { showToast('Não é possível excluir o único concurso.','error'); return; }
+  const ativo = (S.concursos||[]).find(c => c.id === S.concursoAtivo);
+  if (!ativo) return;
+  if (!confirm('Excluir "' + ativo.nome + '" e TODAS as suas disciplinas/aulas/tarefas?')) return;
+  S.disciplinas = (S.disciplinas||[]).filter(d => d.concursoId !== S.concursoAtivo);
+  S.concursos   = (S.concursos||[]).filter(c => c.id !== S.concursoAtivo);
+  S.concursoAtivo = S.concursos[0].id;
+  saveState(); renderDiscList(); renderHoje();
+  showToast('Concurso excluído.');
+};
+
 window.openAddDisc  = ()=>{ const f=document.getElementById('addDiscForm'); f.style.display='block'; document.getElementById('nd-nome').focus(); f.scrollIntoView({behavior:'smooth',block:'nearest'}); };
 window.closeAddDisc = ()=>{ document.getElementById('addDiscForm').style.display='none'; document.getElementById('nd-nome').value=''; document.getElementById('nd-peso').value='20'; document.getElementById('nd-meta').value='80'; document.getElementById('nd-cor').value='#3b82f6'; document.getElementById('nd-nivel').value='nunca'; };
 window.salvarNovaDisc = function() {
