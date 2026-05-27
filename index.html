@@ -210,10 +210,10 @@
                   <input type="text" id="xls-label" placeholder="Ex: Câmara — Maio/2026" style="width:100%">
                 </div>
                 <div class="fg full">
-                  <label>Arquivo (.xlsx)</label>
+                  <label>Arquivo (.xlsx ou .csv)</label>
                   <div class="file-upload-area" onclick="document.getElementById('xls-file').click()">
                     <span id="file-upload-text">📂 Clique para selecionar o arquivo</span>
-                    <input type="file" id="xls-file" accept=".xlsx,.xls" onchange="lerXlsx(this)" style="display:none">
+                    <input type="file" id="xls-file" accept=".xlsx,.xls,.csv,.tsv" onchange="handleXlsOrCsvUpload(this)" style="display:none">
                   </div>
                 </div>
               </div>

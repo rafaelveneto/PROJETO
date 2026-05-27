@@ -1144,112 +1144,51 @@ window.salvarManual = function() {
   const tarefas=tfForms.map((t,i)=>({id:uid(),label:`Tarefa ${i+1}`,type:document.getElementById('ty-'+t.id).value,statusEdital:document.getElementById('ed-'+t.id).value,paginas:document.getElementById('pg-'+t.id).value,topico:document.getElementById('tp-'+t.id).value||`Tarefa ${i+1}`,duracaoMin:parseInt(document.getElementById('du-'+t.id).value)||60,comando:document.getElementById('cm-'+t.id).value,leiSeca:document.getElementById('ls-'+t.id).value,questoes:document.getElementById('qf-'+t.id).value,bizus:document.getElementById('bz-'+t.id).value,keywords:document.getElementById('kw-'+t.id).value,status:'pendente'}));
   d.aulas.push({id:uid(),codigo:cod,titulo:tit,tarefas}); saveState(); showToast(`Aula salva em "${d.nome}"!`); irParaDisciplinas(); renderAll();
 };
+// ── Dispatcher: detecta XLSX ou CSV automaticamente ──────────
+window.handleXlsOrCsvUpload = function(input) {
+  const file = input.files[0]; if (!file) return;
+  const ext  = file.name.split('.').pop().toLowerCase();
+  if (ext === 'csv' || ext === 'tsv' || ext === 'txt') {
+    handleCsvUpload(input);
+  } else {
+    window.lerXlsx(input);
+  }
+};
+
 window.lerXlsx = function(input) {
   const file=input.files[0]; if (!file) return;
   document.getElementById('file-upload-text').textContent=`📄 ${file.name}`;
   const reader=new FileReader();
   reader.onload=e=>{ try {
+    // ── Leitura célula-por-célula (mais confiável que sheet_to_json) ──
     const wb = XLSX.read(e.target.result, {type:'array'});
+    console.log('[TecConcursos] Sheets:', wb.SheetNames);
     const sheet = wb.Sheets[wb.SheetNames[0]];
+    console.log('[TecConcursos] Ref:', sheet['!ref']);
 
-    // Usar defval:'' para garantir que células vazias = string vazia (nunca null/undefined)
-    const rows = XLSX.utils.sheet_to_json(sheet, {header:1, defval:'', raw:true});
-    if (!rows || rows.length < 2) { showToast('Arquivo sem dados. Verifique se o arquivo é do TecConcursos.','error'); return; }
-    console.log('[TecConcursos] Linhas lidas:', rows.length, '| Linha 1:', rows[0]);
-
-    // Normaliza string: lowercase + remove acentos
-    const N = s => String(s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim();
-
-    const hdr = rows[0].map(N);
-    const col = name => hdr.findIndex(h => h && h.includes(N(name)));
-
-    const C = {
-      hier : col('hierarquia'),
-      nome : col('indice'),
-      qRes : col('resolvidas'),
-      pct  : col('acertos (%)'),
-      qAce : col('quantidade de acertos'),
-      peso : col('peso'),
-    };
-
-    console.log('[TecConcursos] Headers:', hdr);
-    console.log('[TecConcursos] Colunas:', C);
-    console.log('[TecConcursos] Linha 2:', rows[1]);
-
-    if (C.nome < 0) {
-      showToast('Coluna "índice" não encontrada. Verifique o arquivo TecConcursos.','error');
-      return;
-    }
-
-    let discs = [], cur = null, totQ = 0, totA = 0;
-
-    for (let r = 1; r < rows.length; r++) {
-      const row = rows[r];
-
-      // Nome da linha (coluna B normalmente)
-      const nome = String(row[C.nome] || '').trim();
-      if (!nome) continue;
-
-      // Hierarquia: vazia → disciplina; preenchida → subtópico
-      const hier = C.hier >= 0 ? String(row[C.hier] || '').trim() : '';
-
-      // Valores numéricos — converter de forma defensiva
-      const qRes  = parseFloat(row[C.qRes]) || 0;
-      const pctV  = parseFloat(row[C.pct])  || 0;
-      // qAce: preferir coluna direta; senão calcular de qRes * pct/100
-      const qAce  = C.qAce >= 0
-        ? (parseFloat(row[C.qAce]) || Math.round(qRes * pctV / 100))
-        : Math.round(qRes * pctV / 100);
-      const peso  = C.peso >= 0 ? (parseFloat(row[C.peso]) || 1) : 1;
-
-      if (!hier) {
-        // ── DISCIPLINA (linha pai) ──────────────────────────────
-        cur = { nome, qResolvidas: qRes, acertos: qAce, pctAcerto: pctV, peso, topicos: [] };
-        discs.push(cur);
-        totQ += qRes;   // acumular aqui (não nos subtópicos)
-        totA += qAce;
-      } else if (cur) {
-        // ── SUBTÓPICO ──────────────────────────────────────────
-        cur.topicos.push({ nome, qResolvidas: qRes, acertos: qAce, pctAcerto: pctV });
+    // Ler diretamente pelas células — evita bugs do sheet_to_json
+    const range  = XLSX.utils.decode_range(sheet['!ref'] || 'A1');
+    const rawRows = [];
+    for (let r = range.s.r; r <= range.e.r; r++) {
+      const row = [];
+      for (let cc = range.s.c; cc <= range.e.c; cc++) {
+        const addr = XLSX.utils.encode_cell({r, c: cc});
+        const cell = sheet[addr];
+        row.push(cell !== undefined ? cell.v : '');
       }
+      rawRows.push(row);
+    }
+    console.log('[TecConcursos] Linhas lidas:', rawRows.length, '| Header:', rawRows[0]);
+
+    if (rawRows.length < 2) {
+      showToast('Arquivo sem dados. Verifique o arquivo TecConcursos.','error'); return;
     }
 
-    console.log('[TecConcursos] Resultado: discs=' + discs.length + ' totQ=' + totQ + ' totA=' + totA);
-
-    if (!discs.length) {
-      showToast('Nenhuma disciplina encontrada. Verifique o formato do arquivo.','error');
-      return;
-    }
-
-    const pctG  = totQ > 0 ? Math.round(totA / totQ * 1000) / 10 : 0;
-    const label = (document.getElementById('xls-label')?.value || '').trim()
-                || new Date().toLocaleDateString('pt-BR');
-
-    _xlsxParsed = { id: uid(), importadoEm: new Date().toISOString(), label, total: totQ, pctGeral: pctG, disciplinas: discs };
-
-    // Preview
-    const cor  = pctG >= 70 ? '#22c55e' : pctG >= 60 ? '#eab308' : '#ef4444';
-    const weak = discs.reduce((acc, d) => {
-      const meta = (S.disciplinas||[]).find(x => N(x.nome) === N(d.nome))?.metaAcerto || 80;
-      return acc + (d.topicos||[]).filter(t => t.pctAcerto < meta && t.qResolvidas >= 3).length;
-    }, 0);
-
-    document.getElementById('xls-preview').innerHTML =
-      '<div style="color:#a1a1aa;font-size:11px;margin-bottom:10px;text-transform:uppercase;letter-spacing:.06em">Preview — ' + label + '</div>' +
-      '<div class="tec-preview-grid">' +
-        '<div class="tec-preview-card"><div class="tec-preview-val">' + totQ + '</div><div class="tec-preview-lbl">Questões</div></div>' +
-        '<div class="tec-preview-card"><div class="tec-preview-val" style="color:' + cor + '">' + pctG + '%</div><div class="tec-preview-lbl">Acerto Global</div></div>' +
-        '<div class="tec-preview-card"><div class="tec-preview-val">' + discs.length + '</div><div class="tec-preview-lbl">Disciplinas</div></div>' +
-        '<div class="tec-preview-card"><div class="tec-preview-val" style="color:#ef4444">' + weak + '</div><div class="tec-preview-lbl">Pontos Fracos</div></div>' +
-      '</div>' +
-      '<div style="display:flex;gap:10px;justify-content:flex-end;margin-top:14px">' +
-        '<button class="btn btn-g" onclick="cancelarXlsx()">Cancelar</button>' +
-        '<button class="btn btn-p" onclick="confirmarXlsx()">✔ Confirmar e Salvar</button>' +
-      '</div>';
+    parsearEExibir(rawRows);
 
   } catch(err) {
-    console.error('[TecConcursos] Erro:', err);
-    showToast('Erro ao processar planilha: ' + err.message,'error');
+    console.error('[TecConcursos] Erro XLSX:', err);
+    showToast('Erro ao ler arquivo: ' + err.message,'error');
   }
 };
 reader.readAsArrayBuffer(file);
