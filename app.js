@@ -1408,39 +1408,142 @@ window.moverAula = function(fromId,aulaId) {
 // TEMPLATES
 // ============================================================
 window.renderTemplates = async function() {
-  const container=document.getElementById('templatesContent'); if (!container) return;
-  container.innerHTML=`<div style="color:var(--tx3);font-size:13px;padding:20px 0">Carregando...</div>`;
+  const container = document.getElementById('templatesContent'); if (!container) return;
+  container.innerHTML = '<div style="color:var(--tx3);font-size:13px;padding:20px 0">Carregando...</div>';
   try {
-    const snap=await db.collection('templates').orderBy('criadoEm','desc').limit(30).get();
-    if (snap.empty){ container.innerHTML=`<div class="empty-state"><div class="empty-state-icon">📋</div><div class="empty-state-title">Nenhum template disponível ainda</div><div class="empty-state-sub">Clique em "Publicar meu plano" para compartilhar.</div></div>`; return; }
-    container.innerHTML=snap.docs.map(doc=>{ const t=doc.data(), isOwn=t.autorUid===currentUser?.uid;
-      return `<div class="template-card" id="tpl-${t.id}">
-        <div class="template-header">
-          <div style="flex:1;min-width:0">
-            <div id="tpl-view-${t.id}" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-              <span class="template-nome">${t.nome}</span>
-              ${isOwn?'<span class="own-badge">SEU</span>':''}
-              ${isOwn?`<button class="btn-icon" title="Renomear" onclick="editarNomeTemplate('${t.id}','${t.nome.replace(/'/g,"\'")}')">✏️</button>`:''}
-            </div>
-            <div id="tpl-edit-${t.id}" style="display:none;margin-top:6px">
-              <div style="display:flex;gap:6px;align-items:center">
-                <input id="tpl-input-${t.id}" value="${t.nome}" style="flex:1;font-size:13px">
-                <button class="btn btn-p" style="padding:5px 10px;font-size:11px" onclick="salvarNomeTemplate('${t.id}')">✔</button>
-                <button class="btn btn-g" style="padding:5px 10px;font-size:11px" onclick="cancelarEditTemplate('${t.id}')">✕</button>
-              </div>
-            </div>
-            <div class="template-meta">por ${t.autor} · ${(t.disciplinas||[]).length} disciplinas · ${new Date(t.criadoEm).toLocaleDateString('pt-BR')}</div>
-          </div>
-          <div style="display:flex;gap:6px;flex-shrink:0">
-            ${isOwn?`<button class="btn btn-g" style="font-size:11px;padding:6px 10px" onclick="deletarTemplate('${t.id}')">🗑️</button>`:''}
-            <button class="btn btn-p" style="font-size:12px" onclick="importarTemplate('${t.id}')">↓ Importar</button>
-          </div>
-        </div>
-        <div class="template-discs">${(t.disciplinas||[]).map(d=>`<span class="disc-badge-sm" style="color:${d.cor};border-color:${d.cor}30;background:${d.cor}15">${d.nome}</span>`).join('')}</div>
-      </div>`;
+    const snap = await db.collection('templates').orderBy('criadoEm','desc').limit(30).get();
+    if (snap.empty) {
+      container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">📋</div><div class="empty-state-title">Nenhum template disponível ainda</div><div class="empty-state-sub">Clique em "Publicar meu plano" para compartilhar.</div></div>';
+      return;
+    }
+    container.innerHTML = snap.docs.map(doc => {
+      const t = doc.data(), isOwn = t.autorUid === currentUser?.uid;
+      const editing = _editingTemplate && _editingTemplate.id === t.id;
+
+      let html = '<div class="template-card" id="tpl-'+t.id+'">';
+      // ── Cabeçalho ─────────────────────────────────────────────
+      html += '<div class="template-header">';
+      html += '<div style="flex:1;min-width:0">';
+      // Nome (view / edit)
+      html += '<div id="tpl-view-'+t.id+'" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">';
+      html += '<span class="template-nome">' + t.nome + '</span>';
+      if (isOwn) html += '<span class="own-badge">SEU</span>';
+      if (isOwn) html += '<button class="btn-icon" title="Renomear" onclick="editarNomeTemplate(\''+t.id+'\',\''+t.nome.replace(/'/g,"\\'")+'\')" >✏️</button>';
+      html += '</div>';
+      html += '<div id="tpl-edit-'+t.id+'" style="display:none;margin-top:6px"><div style="display:flex;gap:6px;align-items:center"><input id="tpl-input-'+t.id+'" value="'+t.nome+'" style="flex:1;font-size:13px"><button class="btn btn-p" style="padding:5px 10px;font-size:11px" onclick="salvarNomeTemplate(\''+t.id+'\')">✔</button><button class="btn btn-g" style="padding:5px 10px;font-size:11px" onclick="cancelarEditTemplate(\''+t.id+'\')">✕</button></div></div>';
+      html += '<div class="template-meta">por ' + t.autor + ' · ' + (editing ? _editingTemplate.disciplinas.length : (t.disciplinas||[]).length) + ' disciplinas · ' + new Date(t.criadoEm).toLocaleDateString('pt-BR') + '</div>';
+      html += '</div>';
+      // Botões de ação
+      html += '<div style="display:flex;gap:6px;flex-shrink:0">';
+      if (isOwn && !editing) html += '<button class="btn btn-g" style="font-size:11px" onclick="abrirEdicaoTemplate(\''+t.id+'\')">✏️ Editar</button>';
+      if (isOwn && editing)  html += '<button class="btn btn-g" style="font-size:11px;color:#ef4444;border-color:#ef4444" onclick="cancelarEdicaoTemplate()">✕ Cancelar</button>';
+      if (isOwn) html += '<button class="btn btn-g" style="font-size:11px;padding:6px 10px" onclick="deletarTemplate(\''+t.id+'\')">🗑️</button>';
+      if (!editing) html += '<button class="btn btn-p" style="font-size:12px" onclick="importarTemplate(\''+t.id+'\')">↓ Importar</button>';
+      html += '</div></div>';
+
+      if (editing) {
+        // ── Editor inline de disciplinas ─────────────────────────
+        html += '<div style="margin-top:14px;background:#111114;border:1px solid #3f3f46;border-radius:8px;padding:14px">';
+        html += '<div style="font-size:11px;font-weight:700;color:#a1a1aa;text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px">Disciplinas no template</div>';
+
+        if (!_editingTemplate.disciplinas.length) {
+          html += '<div style="color:#71717a;font-size:12px;padding:8px 0">Nenhuma disciplina. Adicione abaixo.</div>';
+        } else {
+          _editingTemplate.disciplinas.forEach(function(d, idx) {
+            html += '<div style="display:flex;align-items:center;gap:8px;padding:7px 10px;background:#1c1c1f;border:1px solid #3f3f46;border-radius:6px;margin-bottom:5px">';
+            html += '<span style="width:8px;height:8px;border-radius:50%;background:'+(d.cor||'#a1a1aa')+';flex-shrink:0"></span>';
+            html += '<span style="font-size:13px;color:#f4f4f5;flex:1">' + d.nome + '</span>';
+            html += '<span style="font-size:11px;color:#71717a">' + ((d.aulas||[]).length) + ' aulas</span>';
+            html += '<button class="btn btn-g" style="font-size:11px;padding:4px 8px;color:#ef4444;border-color:#ef4444" onclick="removerDiscDoTemplate('+idx+')">× Remover</button>';
+            html += '</div>';
+          });
+        }
+
+        // Adicionar do concurso ativo
+        const discsAtivos = activeDiscs();
+        const nomesNoTemplate = _editingTemplate.disciplinas.map(function(d){ return d.nome.toLowerCase(); });
+        const disponiveis = discsAtivos.filter(function(d){ return !nomesNoTemplate.includes(d.nome.toLowerCase()); });
+
+        if (disponiveis.length) {
+          html += '<div style="font-size:11px;font-weight:700;color:#a1a1aa;text-transform:uppercase;letter-spacing:.08em;margin-top:14px;margin-bottom:8px">Adicionar do concurso: ' + ((S.concursos||[]).find(function(c){ return c.id===S.concursoAtivo; })||{nome:'?'}).nome + '</div>';
+          disponiveis.forEach(function(d) {
+            html += '<div style="display:flex;align-items:center;gap:8px;padding:7px 10px;background:#18181b;border:1px solid #27272a;border-radius:6px;margin-bottom:5px;opacity:.8">';
+            html += '<span style="width:8px;height:8px;border-radius:50%;background:'+(d.cor||'#a1a1aa')+';flex-shrink:0"></span>';
+            html += '<span style="font-size:13px;color:#d4d4d8;flex:1">' + d.nome + '</span>';
+            html += '<span style="font-size:11px;color:#71717a">' + ((d.aulas||[]).length) + ' aulas</span>';
+            html += '<button class="btn btn-p" style="font-size:11px;padding:4px 8px" onclick="adicionarDiscAoTemplate(\''+d.id+'\')">+ Adicionar</button>';
+            html += '</div>';
+          });
+        }
+
+        html += '<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px">';
+        html += '<button class="btn btn-g" onclick="cancelarEdicaoTemplate()">Cancelar</button>';
+        html += '<button class="btn btn-p" onclick="salvarEdicaoTemplate()">💾 Salvar no Firebase</button>';
+        html += '</div></div>';
+      } else {
+        // Badges normais
+        html += '<div class="template-discs">' + (t.disciplinas||[]).map(function(d){ return '<span class="disc-badge-sm" style="color:'+d.cor+';border-color:'+d.cor+'30;background:'+d.cor+'15">'+d.nome+'</span>'; }).join('') + '</div>';
+      }
+      html += '</div>'; // template-card
+      return html;
     }).join('');
-  } catch(e){ container.innerHTML=`<div class="alert-box alert-info">Erro: ${e.code||e.message}</div>`; }
+  } catch(e) {
+    container.innerHTML = '<div class="alert-box alert-info">Erro: ' + (e.code||e.message) + '</div>';
+  }
 };
+
+
+// ── Editor de disciplinas do template ────────────────────────
+window.abrirEdicaoTemplate = async function(id) {
+  try {
+    const snap = await db.collection('templates').doc(id).get();
+    if (!snap.exists) { showToast('Template não encontrado.','error'); return; }
+    _editingTemplate = { id, ...snap.data() };
+    // Garantir cópia profunda das disciplinas para edição local
+    _editingTemplate.disciplinas = JSON.parse(JSON.stringify(_editingTemplate.disciplinas||[]));
+    renderTemplates();
+  } catch(e) { showToast('Erro: ' + e.message,'error'); }
+};
+
+window.cancelarEdicaoTemplate = function() {
+  _editingTemplate = null; renderTemplates();
+};
+
+window.removerDiscDoTemplate = function(idx) {
+  if (!_editingTemplate) return;
+  _editingTemplate.disciplinas.splice(idx, 1);
+  renderTemplates();
+};
+
+window.adicionarDiscAoTemplate = function(discId) {
+  if (!_editingTemplate) return;
+  const disc = activeDiscs().find(function(d){ return d.id===discId; });
+  if (!disc) return;
+  const nomesAtuais = _editingTemplate.disciplinas.map(function(d){ return d.nome.toLowerCase(); });
+  if (nomesAtuais.includes(disc.nome.toLowerCase())) { showToast('Disciplina já está no template.','info'); return; }
+  const copia = JSON.parse(JSON.stringify(disc));
+  // Zerar status das tarefas na cópia
+  (copia.aulas||[]).forEach(function(a){
+    (a.tarefas||[]).forEach(function(t){ t.status='pendente'; delete t.pctAcerto; delete t.qAcertos; delete t.qRespondidas; delete t.proximaRevisaoEm; });
+  });
+  _editingTemplate.disciplinas.push(copia);
+  renderTemplates();
+};
+
+window.salvarEdicaoTemplate = async function() {
+  if (!_editingTemplate) return;
+  const btn = document.querySelector('[onclick="salvarEdicaoTemplate()"]');
+  if (btn) btn.textContent = 'Salvando...';
+  try {
+    await db.collection('templates').doc(_editingTemplate.id).update({
+      disciplinas: _editingTemplate.disciplinas
+    });
+    showToast('Template atualizado! (' + _editingTemplate.disciplinas.length + ' disciplinas)');
+    _editingTemplate = null; renderTemplates();
+  } catch(e) { showToast('Erro ao salvar: ' + e.message,'error'); }
+};
+
+
 window.editarNomeTemplate = function(id, nomeAtual) {
   document.getElementById(`tpl-view-${id}`).style.display='none';
   document.getElementById(`tpl-edit-${id}`).style.display='block';
