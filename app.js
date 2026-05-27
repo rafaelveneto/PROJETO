@@ -1436,7 +1436,7 @@ window.renderTemplates = async function() {
       return;
     }
     container.innerHTML = snap.docs.map(doc => {
-      const t = doc.data(), isOwn = t.autorUid === currentUser?.uid;
+      const t = doc.data(), docId = doc.id, isOwn = t.autorUid === currentUser?.uid;
       const editing = window._editingTemplate && window._editingTemplate.id === docId;
 
       let html = '<div class="template-card" id="tpl-'+docId+'">';
