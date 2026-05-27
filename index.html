@@ -47,7 +47,6 @@
       <button class="nav-item" id="nav-historico" onclick="goTab('historico')">Histórico</button>
 
       <div class="nav-section">Análise</div>
-      <button class="nav-item" id="nav-questoes" onclick="goTab('questoes')">Análise TecConcursos</button>
       <button class="nav-item" id="nav-progresso" onclick="goTab('progresso')">Progresso & Previsão</button>
 
       <div class="nav-section">Planejamento</div>
@@ -96,26 +95,6 @@
           <div class="stit">Histórico de Atividades</div>
         </div>
         <div id="historicoContent"></div>
-      </div>
-
-      <!-- ── TAB: ANÁLISE DE DESEMPENHO ── -->
-      <div id="tab-questoes" class="tab">
-        <div class="sh" style="margin-bottom:10px">
-          <div class="stit">Análise de Desempenho — Questões TecConcursos</div>
-        </div>
-        <div class="q-filter-bar">
-          <span class="meta-label">Período:</span>
-          <select id="qPeriodSelect" style="width:auto;font-size:13px;font-weight:600" onchange="qPeriod=this.value;renderQuestoes()">
-            <option value="30">Últimos 30 dias</option>
-            <option value="90">Últimos 3 meses</option>
-            <option value="all" selected>Todo o Histórico</option>
-          </select>
-          <span class="meta-label" style="margin-left:8px">Disciplina:</span>
-          <select id="qDiscFilter" style="width:auto;font-size:13px;font-weight:600" onchange="qDiscSel=this.value;renderQuestoes()">
-            <option value="all">Todas</option>
-          </select>
-        </div>
-        <div id="questoesContent"></div>
       </div>
 
       <!-- ── TAB: PROGRESSO & PREVISÃO ── -->
