@@ -135,7 +135,6 @@
           <div class="imp-tabs">
             <button class="imp-tab active" onclick="switchImp('nlm',this)">📋 Colar NotebookLM</button>
             <button class="imp-tab" onclick="switchImp('form',this)">✏️ Formulário Manual</button>
-            <button class="imp-tab" onclick="switchImp('xlsx',this)">📊 Estatísticas TecConcursos</button>
           </div>
 
           <div id="imp-nlm" class="imp-panel active">
@@ -178,27 +177,6 @@
             </div>
           </div>
 
-          <div id="imp-xlsx" class="imp-panel">
-            <div class="card">
-              <div class="alert-box alert-info" style="margin-bottom:16px">
-                Vá no TecConcursos → Estatísticas → Atividades → Exportar (Excel). Faça o upload do arquivo <strong>.xlsx</strong> aqui.
-              </div>
-              <div class="fg2">
-                <div class="fg full">
-                  <label>Nome do Import</label>
-                  <input type="text" id="xls-label" placeholder="Ex: Câmara — Maio/2026" style="width:100%">
-                </div>
-                <div class="fg full">
-                  <label>Arquivo (.xlsx ou .csv)</label>
-                  <div class="file-upload-area" onclick="document.getElementById('xls-file').click()">
-                    <span id="file-upload-text">📂 Clique para selecionar o arquivo</span>
-                    <input type="file" id="xls-file" accept=".xlsx,.xls,.csv,.tsv" onchange="handleXlsOrCsvUpload(this)" style="display:none">
-                  </div>
-                </div>
-              </div>
-              <div id="xls-preview" style="margin-top:14px"></div>
-            </div>
-          </div>
         </div>
 
         <!-- Sub-painel: Disciplinas -->
@@ -229,7 +207,7 @@
               <button class="btn btn-p" onclick="salvarNovaDisc()">✔ Adicionar Disciplina</button>
             </div>
           </div>
-          <div id="discList"></div>
+          <div id="discListContainer"></div>
         </div>
       </div>
 
