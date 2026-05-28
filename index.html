@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>APROVADO · Tracker de Alta Performance</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Syne:wght@700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="style.css?v=3">
 <!-- SheetJS carregado sob demanda via lazyLoadXLSX() -->
 <!-- Chart.js removido -->
 <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-app-compat.js"></script>
@@ -51,14 +51,17 @@
 
       <div class="nav-section">Planejamento</div>
       <button class="nav-item" id="nav-planejamento" onclick="goTab('planejamento')">Planejamento</button>
-      <button class="nav-item" id="nav-templates" onclick="goTab('templates')">Templates</button>
+      <button class="nav-item admin-only" id="nav-templates" onclick="goTab('templates')">Templates</button>
+
+      <div class="nav-section admin-only" id="nav-section-editorial">Editorial</div>
+      <button class="nav-item admin-only" id="nav-editorial" onclick="goTab('editorial')">⚡ Combos</button>
     </nav>
     <div class="sb-footer">
       <div class="sb-user-chip" onclick="logoutFirebase()">
         <div class="sb-user-avatar" id="sbUserAvatar">?</div>
         <div class="sb-user-info">
-          <div class="sb-user-name" id="sbUserName">—</div>
-          <div class="sb-user-role">Sair da conta</div>
+          <div class="sb-user-name" id="sbUserName">—<span id="sbRoleTag" class="admin-badge" style="font-size:9px;background:#f59e0b;color:#000;border-radius:3px;padding:1px 5px;margin-left:6px;font-weight:700;vertical-align:middle;letter-spacing:.04em"></span></div>
+          <div class="sb-user-role" id="sbUserRole">Sair da conta</div>
         </div>
       </div>
     </div>
@@ -106,8 +109,8 @@
       <div id="tab-planejamento" class="tab">
         <div class="plan-tabs">
           <button class="plan-tab active" id="ptab-trilha" onclick="switchPlan('trilha',this)">🗓 Trilha Adaptativa</button>
-          <button class="plan-tab" id="ptab-importar" onclick="switchPlan('importar',this)">📥 Importar Dados</button>
-          <button class="plan-tab" id="ptab-disciplinas" onclick="switchPlan('disciplinas',this)">📚 Disciplinas</button>
+          <button class="plan-tab admin-only" id="ptab-importar" onclick="switchPlan('importar',this)">📥 Importar Dados</button>
+          <button class="plan-tab admin-only" id="ptab-disciplinas" onclick="switchPlan('disciplinas',this)">📚 Disciplinas</button>
         </div>
 
         <!-- Sub-painel: Trilha -->
@@ -238,6 +241,11 @@
         <div id="templatesContent"></div>
       </div>
 
+      <!-- ── TAB: EDITORIAL (só admin) ── -->
+      <div id="tab-editorial" class="tab">
+        <!-- preenchido por renderEditorial() -->
+      </div>
+
     </main>
   </div>
 </div>
@@ -246,6 +254,6 @@
 
 
 
-<script src="app.js"></script>
+<script src="app.js?v=3"></script>
 </body>
 </html>
