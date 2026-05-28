@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>APROVADO · Tracker de Alta Performance</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Syne:wght@700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=3">
+<link rel="stylesheet" href="style.css?v=4">
 <!-- SheetJS carregado sob demanda via lazyLoadXLSX() -->
 <!-- Chart.js removido -->
 <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-app-compat.js"></script>
@@ -115,6 +115,7 @@
 
         <!-- Sub-painel: Trilha -->
         <div id="plan-trilha" class="plan-panel active">
+          <div id="combo-info-block" style="display:none"></div>
           <div class="sh">
             <div class="stit">Trilha Estratégica Adaptativa</div>
             <button class="btn btn-g" onclick="imprimirAgenda()" style="color:var(--tx)">🖨️ Imprimir Agenda</button>
@@ -250,10 +251,17 @@
   </div>
 </div>
 
+<!-- ── ONBOARDING: Seleção de Combo ── -->
+<div id="onboarding-overlay" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:var(--bg, #09090b);z-index:999;overflow-y:auto;padding:32px 16px">
+  <div style="max-width:860px;margin:0 auto" id="onboarding-content">
+    <!-- preenchido por renderOnboarding() -->
+  </div>
+</div>
+
 <div id="printArea" style="display:none"></div>
 
 
 
-<script src="app.js?v=3"></script>
+<script src="app.js?v=4"></script>
 </body>
 </html>
